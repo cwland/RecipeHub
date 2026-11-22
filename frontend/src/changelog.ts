@@ -14,6 +14,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.0.1",
+    date: "2026-11-22",
+    title: "Steps follow scaling",
+    fixed: [
+      "**Steps match the scaled ingredients.** When you scale a recipe, the amounts written in the steps (\"add 2 cans white beans and 1 tbsp cumin\") now change with it, on the recipe page and in Cook Mode, and show in Metric or US when you pick those. Can and package sizes like \"(15 oz.)\" stay as written, and times and temperatures aren't touched.",
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2026-11-22",
     title: "Welcome to RecipeHub",

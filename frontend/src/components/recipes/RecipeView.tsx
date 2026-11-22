@@ -467,7 +467,7 @@ export default function RecipeView({ id, startEditing }: { id: number; startEdit
                   <SectionButtons busy={saver.busy} error={saver.error} onCancel={stopEdit} />
                 </form>
               ) : r.steps.length ? (
-                <Steps steps={r.steps} units={prefs.units} recipe={r} />
+                <Steps steps={r.steps} units={prefs.units} factor={prefs.factor} recipe={r} />
               ) : (
                 <p className="mt-2 text-subtle">No steps yet.</p>
               )}
@@ -615,7 +615,7 @@ export function IngredientLine({ i, factor = 1, units = "original", aiGrams }: {
   );
 }
 
-function Steps({ steps, units, recipe }: { steps: Recipe["steps"]; units: Units; recipe: Recipe }) {
+function Steps({ steps, units, factor, recipe }: { steps: Recipe["steps"]; units: Units; factor: number; recipe: Recipe }) {
   let n = 0;
   return (
     <ol className="mt-3 flex flex-col gap-4">
@@ -631,7 +631,7 @@ function Steps({ steps, units, recipe }: { steps: Recipe["steps"]; units: Units;
           <li key={i} className="flex gap-3">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-sm font-bold text-action">{num}</span>
             <p className="pt-0.5 leading-relaxed">
-              <StepText text={s.text} units={units} recipe={recipe} stepNumber={num} />
+              <StepText text={s.text} units={units} recipe={recipe} stepNumber={num} scaling={{ ingredients: recipe.ingredients, factor }} />
             </p>
           </li>
         );

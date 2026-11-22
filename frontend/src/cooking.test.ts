@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convert, convertTemperatures, driedEquivalent, findTimers, formatAmount, ingredientLine, recipeUnits, scale, stepUses } from "./cooking";
+import { convert, convertTemperatures, driedEquivalent, findTimers, formatAmount, ingredientLine, recipeUnits, scale, scaleStepText, stepUses } from "./cooking";
 import type { Ingredient } from "./recipes";
 
 const ing = (quantity: number | null, unit: string | null, name: string, extra: Partial<Ingredient> = {}): Ingredient => ({ raw: `${quantity ?? ""} ${unit ?? ""} ${name}`.trim(), quantity, unit, name, ...extra });
@@ -186,5 +186,53 @@ describe("US: grams of a dry ingredient to cups and spoons", () => {
   });
   it("not in the table: ounces, as before", () => {
     expect(ingredientLine(ing(250, "g", "ground beef"), 1, "us")).toMatchObject({ amount: "9 oz", was: null });
+  });
+});
+
+describe("amounts in step text follow scaling", () => {
+  const chilli = [
+    ing(2, "can", "white beans", { note: "15 oz.; rinsed and drained" }),
+    ing(4, "cup", "low-sodium chicken broth"),
+    ing(2, "can", "roasted green chilies", { note: "4 oz.; drained" }),
+    ing(1, "tbsp", "ground cumin"),
+    ing(2, null, "onions", { note: "chopped" }),
+  ];
+  const step =
+    "Add 2 (15 oz.) cans rinsed and drained white beans, 4 cups low-sodium chicken broth, 2 (4 oz.) cans drained roasted green chilies, and 1 tbsp ground cumin.";
+
+  it("scales each amount that belongs to an ingredient, leaving can sizes alone", () => {
+    expect(scaleStepText(step, chilli, 1.5, "original")).toBe(
+      "Add 3 (15 oz.) cans rinsed and drained white beans, 6 cups low-sodium chicken broth, 3 (4 oz.) cans drained roasted green chilies, and 1½ tbsp ground cumin."
+    );
+  });
+
+  it("leaves the text as written at 1× in the recipe's own units", () => {
+    expect(scaleStepText(step, chilli, 1, "original")).toBe(step);
+  });
+
+  it("scales counts without a unit", () => {
+    expect(scaleStepText("Sauté 2 onions until soft.", chilli, 1.5, "original")).toBe("Sauté 3 onions until soft.");
+  });
+
+  it("fixes the unit's plural", () => {
+    expect(scaleStepText("Whisk in 1 cup flour.", [ing(1, "cup", "flour")], 2, "original")).toBe("Whisk in 2 cups flour.");
+    expect(scaleStepText("Whisk in 2 cups flour.", [ing(2, "cup", "flour")], 0.5, "original")).toBe("Whisk in 1 cup flour.");
+  });
+
+  it("leaves times, temperatures and amounts that aren't an ingredient alone", () => {
+    const text = "Bake at 350°F for 20 minutes, then cut the onions into 2 inch pieces.";
+    expect(scaleStepText(text, chilli, 2, "original")).toBe(text);
+  });
+
+  it("doesn't scale a count when the ingredient is measured (4 portions of a 1 lb roast)", () => {
+    expect(scaleStepText("Cut into 4 portions of beef.", [ing(1, "lb", "beef")], 2, "original")).toBe("Cut into 4 portions of beef.");
+  });
+
+  it("shows metric or US amounts when those are picked", () => {
+    expect(scaleStepText("Pour in 2 cups chicken broth.", [ing(2, "cup", "chicken broth")], 1, "metric")).toBe("Pour in 470 ml chicken broth.");
+  });
+
+  it("scales ranges", () => {
+    expect(scaleStepText("Add 2-3 tbsp olive oil.", [ing(2, "tbsp", "olive oil", { quantityMax: 3 })], 2, "original")).toBe("Add 4–6 tbsp olive oil.");
   });
 });

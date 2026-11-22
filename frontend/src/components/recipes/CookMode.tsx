@@ -262,7 +262,7 @@ export default function CookMode({ id }: { id: number }) {
                   {current.section && <span className="text-muted"> · {current.section}</span>}
                 </p>
                 <p className="mt-4 text-2xl leading-snug sm:text-3xl sm:leading-snug">
-                  <StepText key={current.n} text={current.text} units={prefs.units} recipe={r} stepNumber={current.n} big />
+                  <StepText key={current.n} text={current.text} units={prefs.units} recipe={r} stepNumber={current.n} big scaling={{ ingredients: r.ingredients, factor: prefs.factor }} />
                 </p>
                 {usedNow.size > 0 && (
                   <div className="mt-8">

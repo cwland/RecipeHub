@@ -1,12 +1,13 @@
 import { Fragment } from "react";
-import { convertTemperatures, findTimers, type Units } from "../../cooking";
-import { stepLabel } from "../../recipes";
+import { convertTemperatures, findTimers, scaleStepText, type Units } from "../../cooking";
+import { stepLabel, type Ingredient } from "../../recipes";
 import { startTimer } from "../../timers";
 import { ClockIcon } from "../Icons";
 
-// A step's text, with temperatures in your units and each time ("simmer for 15 minutes") as a
-// button that starts a timer
-export function StepText({ text, units, recipe, stepNumber, big }: { text: string; units: Units; recipe: { id: number; title: string }; stepNumber: number; big?: boolean }) {
+// A step's text, with temperatures in your units, the ingredients' amounts at the recipe's scale
+// (scaling), and each time ("simmer for 15 minutes") as a button that starts a timer
+export function StepText({ text: written, units, recipe, stepNumber, big, scaling }: { text: string; units: Units; recipe: { id: number; title: string }; stepNumber: number; big?: boolean; scaling?: { ingredients: Ingredient[]; factor: number } }) {
+  const text = scaling ? scaleStepText(written, scaling.ingredients, scaling.factor, units) : written;
   // "Brown: Sear 3–5 minutes…": the short label in bold (AI Enhance writes steps this way)
   const label = stepLabel(text);
   if (label)

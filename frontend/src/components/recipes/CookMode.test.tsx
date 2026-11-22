@@ -137,3 +137,23 @@ describe("Cook Mode ingredient order", () => {
   });
 });
 
+
+describe("a scaled recipe in Cook Mode", () => {
+  it("the step's own amounts match the scaled checklist", async () => {
+    localStorage.setItem("recipehub-cook-prefs", JSON.stringify({ scale: { 7: 1.5 } }));
+    fakeServer({
+      "GET /api/recipes/7": () =>
+        recipeJson({
+          ingredients: [
+            { raw: "2 cans white beans, 15 oz.", quantity: 2, quantityMax: null, unit: "can", name: "white beans", note: "15 oz." },
+            { raw: "4 cups chicken broth", quantity: 4, quantityMax: null, unit: "cup", name: "chicken broth", note: null },
+          ],
+          steps: [{ text: "Add 2 (15 oz.) cans white beans and 4 cups chicken broth." }],
+        }),
+      "GET /api/recipes/7/me": () => ({}),
+    });
+    render(<CookMode id={7} />);
+    expect(await screen.findByText("Add 3 (15 oz.) cans white beans and 6 cups chicken broth.")).toBeInTheDocument();
+    localStorage.removeItem("recipehub-cook-prefs");
+  });
+});

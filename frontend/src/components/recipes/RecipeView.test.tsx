@@ -784,3 +784,19 @@ describe("metric: grams for dry ingredients", () => {
     await waitFor(() => expect(within(ingredients).getAllByRole("listitem").map((li) => li.textContent?.replace(/\s+/g, " ").trim())).toEqual(["≈240 g all-purpose flour (2 cups)", "≈16 g chili powder (2 tbsp)"]));
   });
 });
+
+describe("a scaled recipe's steps", () => {
+  it("the amounts in the steps follow the servings picked", async () => {
+    localStorage.setItem("recipehub-cook-prefs", JSON.stringify({ scale: { 7: 2 } }));
+    server(
+      { ready: false, photos: false },
+      recipeJson({
+        ingredients: [{ raw: "1 tbsp ground cumin", quantity: 1, quantityMax: null, unit: "tbsp", name: "ground cumin", note: null }],
+        steps: [{ text: "Stir in 1 tbsp ground cumin." }],
+      })
+    );
+    render(<RecipeView id={7} />);
+    expect(await screen.findByText("Stir in 2 tbsp ground cumin.")).toBeInTheDocument();
+    localStorage.removeItem("recipehub-cook-prefs");
+  });
+});

@@ -258,7 +258,7 @@ export interface FoundTimer {
 }
 
 const WORD_NUMBERS: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, fifteen: 15, twenty: 20, thirty: 30, "forty-five": 45, forty: 40, sixty: 60, ninety: 90, half: 0.5 };
-const FRACTION_CHARS: Record<string, number> = { "½": 0.5, "¼": 0.25, "¾": 0.75, "⅓": 1 / 3, "⅔": 2 / 3 };
+const FRACTION_CHARS: Record<string, number> = { "½": 1 / 2, "⅓": 1 / 3, "⅔": 2 / 3, "¼": 1 / 4, "¾": 3 / 4, "⅛": 1 / 8, "⅜": 3 / 8, "⅝": 5 / 8, "⅞": 7 / 8 };
 const NUM = String.raw`(?:\d+(?:[.,]\d+)?\s*[½¼¾⅓⅔]?|[½¼¾⅓⅔]|\d+\s+\d\/\d|\d\/\d|an?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty-five|forty|sixty|ninety)`;
 const UNIT = String.raw`(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)\b`;
 const ONE = String.raw`(${NUM})(?:\s*(?:-|–|—|to|or)\s*(${NUM}))?\s*(?:and a half\s+)?${UNIT}(?:\s+and a half)?`;
@@ -324,4 +324,104 @@ export function stepUses(step: string, ingredient: Ingredient): boolean {
   const inStep = new Set(keyWords(step));
   // the last word is usually the thing itself ("olive oil" -> oil, "kidney beans" -> bean)
   return inStep.has(words[words.length - 1]);
+}
+
+// ---------- amounts written in step text ----------
+
+// Unit words as written in steps -> the stored unit (as the server's ingredient reader names them)
+const STEP_UNITS: Record<string, string> = {};
+const units = (unit: string, ...names: string[]) => names.forEach((n) => (STEP_UNITS[n] = unit));
+units("cup", "cup", "cups", "c.");
+units("tbsp", "tbsp", "tbsp.", "tbs", "tbs.", "tablespoon", "tablespoons");
+units("tsp", "tsp", "tsp.", "teaspoon", "teaspoons");
+units("fl oz", "fl oz", "fl. oz", "fl. oz.", "fluid ounce", "fluid ounces");
+units("oz", "oz", "oz.", "ounce", "ounces");
+units("lb", "lb", "lb.", "lbs", "lbs.", "pound", "pounds");
+units("g", "g", "gram", "grams");
+units("kg", "kg", "kilogram", "kilograms");
+units("ml", "ml", "milliliter", "milliliters", "millilitre", "millilitres");
+units("l", "l", "liter", "liters", "litre", "litres");
+units("pt", "pt", "pint", "pints");
+units("qt", "qt", "quart", "quarts");
+units("pinch", "pinch", "pinches");
+units("dash", "dash", "dashes");
+units("clove", "clove", "cloves");
+units("can", "can", "cans", "tin", "tins");
+units("jar", "jar", "jars");
+units("package", "package", "packages", "packet", "packets");
+units("stick", "stick", "sticks");
+units("slice", "slice", "slices");
+units("bunch", "bunch", "bunches");
+units("sprig", "sprig", "sprigs");
+units("inch", "inch", "inches");
+const STEP_UNIT_WORDS = Object.keys(STEP_UNITS).sort((a, b) => b.length - a.length);
+// Spelled-out units written as words ("tablespoons"): kept spelled out, singular or plural to match
+const SPELLED = /^(tablespoon|teaspoon|ounce|pound|gram|kilogram|liter|litre|milliliter|millilitre|pint|quart)s?$/i;
+
+const AMOUNT_NUM = String.raw`(?:\d+\s+\d+\/\d+|\d+\/\d+|\d*\.\d+|\d+\s?[½⅓⅔¼¾⅛⅜⅝⅞]|\d+|[½⅓⅔¼¾⅛⅜⅝⅞])`;
+// an amount: "2", "1½", "1 1/2", "2-3", "2 to 3", then maybe a size "(15 oz.)"
+const STEP_AMOUNT = new RegExp(String.raw`(?<![\w.,/])(${AMOUNT_NUM})(?:\s*(?:-|–|to)\s*(${AMOUNT_NUM}))?(\s*\([^)]*\))?`, "g");
+
+function numberValue(s: string): number {
+  const t = s.trim();
+  const mixed = t.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixed) return +mixed[1] + +mixed[2] / +mixed[3];
+  const frac = t.match(/^(\d+)\/(\d+)$/);
+  if (frac) return +frac[1] / +frac[2];
+  const uni = t.match(/^(\d*)\s?([½⅓⅔¼¾⅛⅜⅝⅞])$/);
+  if (uni) return (uni[1] ? +uni[1] : 0) + FRACTION_CHARS[uni[2]];
+  return parseFloat(t);
+}
+
+const family = (u: string | null | undefined) => (!u ? "count" : u in VOLUME ? "volume" : u in WEIGHT ? "weight" : u);
+
+// The ingredient an amount in a step belongs to: one whose name's last word ("beans") comes in the
+// words after the amount (up to the next comma or full stop), measured the same way (a count for a
+// count, a volume for a volume…). None: the amount isn't scaled ("20 minutes", "2 inch pieces").
+function ingredientFor(rest: string, unit: string | null, ingredients: Ingredient[]) {
+  const words = new Set(keyWords(rest.split(/[,.;:!?(]|\d/)[0]));
+  return ingredients.find((i) => {
+    if (i.section) return false;
+    const key = keyWords(i.name ?? i.raw);
+    return key.length > 0 && words.has(key[key.length - 1]) && family(i.unit) === family(unit);
+  });
+}
+
+// A step's text with the amounts that belong to an ingredient scaled (and in the chosen units),
+// the way the ingredient list shows them. Can and package sizes in brackets stay as written.
+export function scaleStepText(text: string, ingredients: Ingredient[], factor: number, to: Units): string {
+  if (factor === 1 && to === "original") return text;
+  let out = "";
+  let at = 0;
+  for (const m of text.matchAll(STEP_AMOUNT)) {
+    const [whole, n1, n2, size = ""] = m;
+    const start = m.index!;
+    if (start < at) continue;
+    const after = text.slice(start + whole.length);
+    if (/^\s*(°|degrees|%)/i.test(after)) continue;
+    // the unit word right after the amount ("cups", "tbsp"), if any
+    const lead = after.match(/^\s+/)?.[0] ?? "";
+    const lower = after.slice(lead.length).toLowerCase();
+    const word = lead ? STEP_UNIT_WORDS.find((u) => lower.startsWith(u) && (lower.length === u.length || /[\s,.;:)]/.test(lower[u.length]) || u.endsWith("."))) : undefined;
+    const unit = word ? STEP_UNITS[word] : null;
+    if (!ingredientFor(word ? lower.slice(word.length) : lower, unit, ingredients)) continue;
+
+    const lo = numberValue(n1) * factor;
+    const hi = n2 ? numberValue(n2) * factor : null;
+    const written = word ? after.slice(lead.length, lead.length + word.length) : "";
+    const shown = convert({ quantity: lo, quantityMax: hi, unit }, to);
+    let replacement: string;
+    if (unit && shown.unit !== unit) {
+      replacement = `${formatAmount(shown)}${size}`; // another unit now: the new amount and unit replace both
+    } else {
+      const number = formatQuantity(lo) + (hi ? `–${formatQuantity(hi)}` : "");
+      let newWord = written;
+      if (unit && (written.toLowerCase() === unit || written.toLowerCase() === unitLabel(unit, 2))) newWord = unitLabel(unit, hi ?? lo);
+      else if (SPELLED.test(written)) newWord = written.replace(/s$/i, "") + ((hi ?? lo) > 1 ? "s" : "");
+      replacement = `${number}${size}${word ? lead + newWord : ""}`;
+    }
+    out += text.slice(at, start) + replacement;
+    at = start + whole.length + (word ? lead.length + word.length : 0);
+  }
+  return out + text.slice(at);
 }
