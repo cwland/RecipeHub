@@ -1,0 +1,103 @@
+name: Build
+
+# Every push: run the tests, then build the linux/amd64 Docker image.
+# Pushes to main (and v1.2.3 tags) also publish it to ghcr.io/<owner>/recipehub.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: recipehub
+          POSTGRES_PASSWORD: recipehub
+          POSTGRES_DB: recipehub_test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U recipehub" --health-interval 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://recipehub:recipehub@localhost:5432/recipehub_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: "API: install, typecheck, test"
+        working-directory: backend
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+      - name: "Web app: install, test, build"
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/recipehub
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=sha,format=short
+      - name: Sign in to GitHub's container registry
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build linux/amd64 (and publish from main / version tags)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Load the image to try it
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: recipehub:ci
+          cache-from: type=gha
+      - name: "Smoke test: the image starts its tools, resizes a photo and can draw PDF pages"
+        run: |
+          docker run --rm --entrypoint node recipehub:ci -e "
+            const sharp = require('sharp');
+            sharp({ create: { width: 3000, height: 2000, channels: 3, background: '#20b35b' } }).jpeg().toBuffer()
+              .then((b) => sharp(b).resize({ width: 1600, height: 1600, fit: 'inside' }).webp().toBuffer())
+              .then((w) => sharp(w).metadata())
+              .then((m) => { if (m.width !== 1600 || m.format !== 'webp') throw new Error('resize failed'); console.log('sharp ok', m.width, m.format); })
+              .catch((e) => { console.error(e); process.exit(1); });"
+          docker run --rm --entrypoint node recipehub:ci -e "
+            Promise.all([import('@napi-rs/canvas'), import('pdfjs-dist/legacy/build/pdf.mjs')])
+              .then(([{ createCanvas }]) => { const c = createCanvas(20, 20); c.getContext('2d').fillRect(0, 0, 10, 10); return c.encode('png'); })
+              .then((png) => { if (!png.length) throw new Error('canvas failed'); console.log('pdf drawing ok', png.length); })
+              .catch((e) => { console.error(e); process.exit(1); });"
+          docker run --rm --entrypoint sh recipehub:ci -c "test -f dist/index.js && test -f web/index.html && test -d drizzle && echo layout ok"

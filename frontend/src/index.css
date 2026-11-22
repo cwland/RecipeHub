@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@import "@fontsource/figtree/300.css";
+@import "@fontsource/figtree/400.css";
+@import "@fontsource/figtree/500.css";
+@import "@fontsource/figtree/600.css";
+@import "@fontsource/figtree/700.css";
+
+/* Color tokens: the default theme (Fresh, light). Themes and dark mode (src/themes.ts) replace them at runtime. */
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+
+  --color-page: #f5f7f6;
+  --color-container: #ffffff;
+  --color-line: #e4e9e6;
+  --color-strong: #cfd8d3;
+  --color-brand: #20b35b;
+  --color-brand-subtle: #e3f6ea;
+  --color-success: #1f9d55;
+  --color-success-subtle: #dcf5e5;
+  --color-error: #d1433b;
+  --color-error-subtle: #fde2df;
+  --color-warning: #f2a20c;
+  --color-pressed: #eaf5ee;
+  --color-active: #d5efdf;
+  --color-primary: #1e2b33;
+  --color-primary-pressed: #121b21;
+  --color-action: #138a45;
+  --color-link: #11853f;
+  --color-ink: #1a2329;
+  --color-subtle: #46545c;
+  --color-muted: #66747b;
+  --color-inactive: #8f9ca2;
+}
+
+@layer base {
+  html,
+  body {
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  button {
+    cursor: pointer;
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Smooth color change when switching themes or light/dark */
+@media (prefers-reduced-motion: no-preference) {
+  body, section, nav, main { transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
+}
+
+/* Scrolls sideways (on narrow screens) without showing a scrollbar */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Discovery: a post's own HTML as the feed sent it (made safe on the server) */
+.feed-post { line-height: 1.65; overflow-wrap: anywhere; }
+.feed-post > * + * { margin-top: 0.85em; }
+.feed-post h2 { font-size: 1.3rem; font-weight: 700; margin-top: 1.4em; }
+.feed-post h3, .feed-post h4, .feed-post h5, .feed-post h6 { font-size: 1.1rem; font-weight: 700; margin-top: 1.2em; }
+.feed-post ul { list-style: disc; padding-left: 1.4em; }
+.feed-post ol { list-style: decimal; padding-left: 1.4em; }
+.feed-post li + li { margin-top: 0.3em; }
+.feed-post a { color: var(--color-link); text-decoration: underline; }
+.feed-post img { max-width: 100%; height: auto; border-radius: 0.75rem; }
+.feed-post blockquote { border-left: 3px solid var(--color-line); padding-left: 1em; color: var(--color-subtle); }
+.feed-post figcaption { font-size: 0.85rem; color: var(--color-subtle); margin-top: 0.3em; }
+.feed-post table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.feed-post td, .feed-post th { border: 1px solid var(--color-line); padding: 0.35em 0.6em; text-align: left; }
+.feed-post pre { white-space: pre-wrap; }
+
+/* After the setup wizard: Add recipe glows, and its tip pops in */
+@keyframes recipehub-glow {
+  0% { box-shadow: 0 0 0 0 rgba(32, 179, 91, 0.55); }
+  70% { box-shadow: 0 0 0 14px rgba(32, 179, 91, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(32, 179, 91, 0); }
+}
+@keyframes recipehub-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.hint-glow { animation: recipehub-glow 1.6s ease-out infinite; }
+.hint-pop { animation: recipehub-pop 0.35s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .hint-glow, .hint-pop { animation: none; }
+  .hint-glow { box-shadow: 0 0 0 4px rgba(32, 179, 91, 0.45); }
+}

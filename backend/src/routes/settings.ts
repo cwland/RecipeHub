@@ -1,0 +1,247 @@
+import { setFeatures } from "../lib/features.js";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import { z } from "zod";
+import { eq } from "drizzle-orm";
+import { users } from "../db/schema.js";
+import { HttpError } from "../lib/errors.js";
+import type { EmailConfig } from "../lib/mail.js";
+import { AI_PROVIDERS, AiError, type AiConfig } from "../lib/ai.js";
+
+function requireLogin(req: FastifyRequest): number {
+  if (req.auth?.method !== "token") throw new HttpError(403, "Log in to do this");
+  return req.auth.userId;
+}
+
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .nullable()
+    .optional()
+    .transform((v) => (v ? v : null));
+
+const emailSettings = z
+  .object({
+    enabled: z.boolean(),
+    host: z.string().trim().max(253).default(""),
+    port: z.coerce.number().int().min(1).max(65535).default(587),
+    security: z.enum(["starttls", "ssl", "auto", "none"]).default("starttls"),
+    username: optionalText(320),
+    password: z.string().max(500).nullable().optional(), // undefined = keep saved, "" = remove
+    fromName: optionalText(100),
+    fromAddress: z.string().trim().max(320).default(""),
+    appUrl: optionalText(500),
+  })
+  .superRefine((v, ctx) => {
+    if (v.fromAddress && !z.string().email().safeParse(v.fromAddress).success) {
+      ctx.addIssue({ code: "custom", path: ["fromAddress"], message: "From address isn't a valid email" });
+    }
+    if (v.appUrl && !/^https?:\/\/[^\s/]+/.test(v.appUrl)) {
+      ctx.addIssue({ code: "custom", path: ["appUrl"], message: "App address should start with http:// or https://" });
+    }
+    if (v.enabled) {
+      if (!v.host) ctx.addIssue({ code: "custom", path: ["host"], message: "Server is required" });
+      if (!v.fromAddress) ctx.addIssue({ code: "custom", path: ["fromAddress"], message: "From address is required" });
+    }
+  });
+
+export default async function settingsRoutes(app: FastifyInstance) {
+  const { db, mail } = app;
+
+  const accountEmail = async (userId: number) =>
+    (await db.select({ email: users.email }).from(users).where(eq(users.id, userId)))[0]?.email ?? null;
+
+  // Current email settings. The password itself is never sent back.
+  app.get("/api/settings/email", async (req) => {
+    const userId = requireLogin(req);
+    const stored = await mail.stored();
+    const active = await mail.active();
+    const { unreadable } = await mail.storedPassword();
+    return {
+      source: stored ? "app" : active?.source ?? "none", // where settings come from
+      active: !!active,
+      linksReady: !!active?.config.appUrl,
+      settings: stored
+        ? {
+            enabled: stored.enabled,
+            host: stored.host,
+            port: stored.port,
+            security: stored.security,
+            username: stored.username,
+            passwordSet: !!stored.passwordEnc,
+            passwordUnreadable: unreadable,
+            fromName: stored.fromName,
+            fromAddress: stored.fromAddress,
+            appUrl: stored.appUrl,
+          }
+        : null,
+      env: { available: mail.envAvailable, host: mail.envHost },
+      accountEmail: await accountEmail(userId),
+    };
+  });
+
+  // ---------- AI services (tried in order; the next one is a backup) ----------
+  const service = z
+    .object({
+      id: z.string().max(40).optional(),
+      name: z.string().trim().max(60).optional(),
+      enabled: z.boolean().default(true),
+      provider: z.enum(AI_PROVIDERS),
+      model: z.string().trim().max(200).default(""),
+      baseUrl: optionalText(500),
+      apiKey: z.string().trim().max(500).nullable().optional(), // undefined = keep saved, "" = remove
+      quick: z.boolean().optional(),
+      photos: z.boolean().optional(),
+    })
+    .superRefine((v, ctx) => {
+      if (v.baseUrl && !/^https?:\/\/[^\s/]+/.test(v.baseUrl)) ctx.addIssue({ code: "custom", path: ["baseUrl"], message: "Address should start with http:// or https://" });
+    });
+  const common = {
+    enabled: z.boolean(),
+    mode: z.enum(["auto", "manual"]).default("auto"),
+    maxPerRun: z.coerce.number().int().min(1).max(500).default(50),
+    timeoutSec: z.coerce.number().int().min(3).max(300).optional(),
+    askNextOnNoMatch: z.boolean().optional(),
+  };
+  // Each service needs a model (and a local one its address)
+  const checkReady = (enabled: boolean, list: z.infer<typeof service>[], ctx: z.RefinementCtx, prefix: (i: number) => (string | number)[]) => {
+    if (!enabled) return;
+    list.forEach((v, i) => {
+      const who = list.length > 1 ? `${v.name || `Service ${i + 1}`}: ` : "";
+      if (v.provider === "local" && !v.baseUrl) ctx.addIssue({ code: "custom", path: [...prefix(i), "baseUrl"], message: `${who}Enter your AI server's address` });
+      if (!v.model) ctx.addIssue({ code: "custom", path: [...prefix(i), "model"], message: `${who}Choose a model` });
+    });
+  };
+  const aiSettings = z.union([
+    // Settings > AI saves the services (on/off is the switch at the top of Settings > AI)
+    z
+      .object({ ...common, enabled: z.boolean().optional(), mode: z.enum(["auto", "manual"]).optional(), services: z.array(service).max(10) })
+      .superRefine((v, ctx) => checkReady(true, v.services, ctx, (i) => ["services", i])),
+    // The single-provider shape from before backup services (updates the first service)
+    service.and(z.object(common)).superRefine((v, ctx) => checkReady(v.enabled, [v], ctx, () => [])),
+  ]);
+
+  // The service to test or list models with: typed values, with a blank key falling back to the saved one
+  const aiConfigFrom = async (body: unknown): Promise<AiConfig> => {
+    const v = service.parse(body);
+    const apiKey = v.apiKey === undefined || v.apiKey === null || v.apiKey === "" ? (await app.ai.savedKey(v.id)).key : v.apiKey;
+    return { provider: v.provider, model: v.model, baseUrl: v.baseUrl ? v.baseUrl.replace(/\/+$/, "") : null, apiKey };
+  };
+  const aiErrors = async <T>(fn: () => Promise<T>) => {
+    try {
+      return await fn();
+    } catch (e) {
+      if (e instanceof AiError) throw new HttpError(400, e.message);
+      throw e;
+    }
+  };
+
+  app.get("/api/settings/ai", async (req) => {
+    requireLogin(req);
+    return { settings: await app.ai.summary() };
+  });
+
+  app.put("/api/settings/ai", async (req) => {
+    requireLogin(req);
+    const v = aiSettings.parse(req.body);
+    // The first time AI is set up, AI Enhance and Auto nutrition come on with it
+    const first = !(await app.ai.stored())?.services.length;
+    const clean = (sv: z.infer<typeof service>) => ({ ...sv, baseUrl: sv.baseUrl ? sv.baseUrl.replace(/\/+$/, "") : null, apiKey: sv.apiKey === null ? "" : sv.apiKey });
+    if ("services" in v) {
+      await app.ai.save({ ...v, services: v.services.map(clean) });
+    } else {
+      // Old shape: becomes (or replaces) the first service, keeping any backups after it
+      const current = await app.ai.stored();
+      const { enabled, mode, maxPerRun, timeoutSec, askNextOnNoMatch, ...first } = v;
+      const rest = (current?.services.slice(1) ?? []).map((sv) => ({ ...sv, apiKey: undefined }));
+      await app.ai.save({ enabled, mode, maxPerRun, timeoutSec, askNextOnNoMatch, services: [{ ...clean({ ...first, enabled: true }), id: current?.services[0]?.id }, ...rest] });
+    }
+    if (first && (await app.ai.stored())?.services.length) await setFeatures(app.db, { ai: true, aiEnhance: true, autoNutrition: true });
+    return { settings: await app.ai.summary() };
+  });
+
+  app.delete("/api/settings/ai", async (req, reply) => {
+    requireLogin(req);
+    await app.ai.clear();
+    return reply.status(204).send();
+  });
+
+  app.post("/api/settings/ai/test", async (req) => {
+    requireLogin(req);
+    const c = await aiConfigFrom(req.body);
+    const timeoutSec = (await app.ai.stored())?.timeoutSec ?? 15;
+    await aiErrors(() => app.ai.test(c, Math.max(timeoutSec, 30) * 1000));
+    return { ok: true, message: `${c.model} answered correctly.` };
+  });
+
+  app.post("/api/settings/ai/models", async (req) => {
+    requireLogin(req);
+    const c = await aiConfigFrom(req.body);
+    return { models: await aiErrors(() => app.ai.models(c)) };
+  });
+
+  // The saved password, only when you click Show (signed in only; never in the normal settings read)
+  app.get("/api/settings/email/password", async (req) => {
+    requireLogin(req);
+    const { password, unreadable } = await mail.storedPassword();
+    if (unreadable) throw new HttpError(409, "The saved password can't be read (the server's secret changed). Enter it again.");
+    return { password };
+  });
+
+  app.put("/api/settings/email", async (req) => {
+    requireLogin(req);
+    const { password, ...rest } = emailSettings.parse(req.body);
+    await mail.save({ ...rest, appUrl: rest.appUrl ? rest.appUrl.replace(/\/+$/, "") : null }, password === null ? "" : password);
+    return { ok: true };
+  });
+
+  // Forget the app's email settings (falls back to .env, if set there)
+  app.delete("/api/settings/email", async (req, reply) => {
+    requireLogin(req);
+    await mail.clear();
+    return reply.status(204).send();
+  });
+
+  // Send a test email. With `settings`, tests those (unsaved) values; otherwise the saved ones.
+  app.post("/api/settings/email/test", async (req) => {
+    const userId = requireLogin(req);
+    const body = z
+      .object({ settings: emailSettings.optional(), to: z.string().trim().email("Enter a valid address to send the test to").optional() })
+      .parse(req.body ?? {});
+
+    let config: EmailConfig;
+    if (body.settings) {
+      const { password, enabled: _enabled, ...s } = body.settings;
+      if (!s.host || !s.fromAddress) throw new HttpError(400, "Fill in the server and from address first");
+      // Blank password field = use the saved one
+      const saved = password ? null : (await mail.storedPassword()).password;
+      config = { ...s, password: password || saved };
+    } else {
+      const active = await mail.active();
+      if (!active) throw new HttpError(400, "Email isn't set up yet");
+      config = active.config;
+    }
+
+    const to = body.to ?? (await accountEmail(userId));
+    if (!to) throw new HttpError(400, "Add an email address to your profile, or enter one to send the test to");
+
+    try {
+      await mail.verify(config);
+      await mail.send(
+        {
+          to,
+          subject: "RecipeHub test email",
+          text: "Email from RecipeHub is working. Password reset links will arrive like this one.",
+        },
+        config,
+        "test"
+      );
+    } catch (err) {
+      req.log.warn(err);
+      const msg = (err as Error).message.replace(/\s+/g, " ").slice(0, 300);
+      throw new HttpError(502, `Couldn't send: ${msg}`);
+    }
+    return { ok: true, to };
+  });
+}

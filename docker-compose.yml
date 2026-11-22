@@ -1,0 +1,35 @@
+# RecipeHub for the homelab: the app and PostgreSQL.
+#   cp .env.example .env    (then change the passwords and JWT_SECRET)
+#   docker compose up -d     -> http://<server>:4000
+# Everything RecipeHub keeps (photos, backups, logs) is in ./data; the database is in ./data/postgres.
+services:
+  recipehub:
+    image: ${RECIPEHUB_IMAGE:-ghcr.io/cwland/recipehub:latest}
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # The password is passed on its own (PGPASSWORD), so any characters work (/, +, = …), no encoding
+      DATABASE_URL: postgresql://${POSTGRES_USER}@db:5432/${POSTGRES_DB}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${PORT:-4000}:4000"
+    volumes:
+      - ./data/app:/app/data
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10

@@ -1,0 +1,18 @@
+# Development on the Mac: just PostgreSQL in Docker; run the app with `npm run dev`.
+#   docker compose -f docker-compose.dev.yml up -d
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: recipehub
+      POSTGRES_PASSWORD: recipehub
+      POSTGRES_DB: recipehub
+    ports:
+      - "5432:5432"
+    volumes:
+      - recipehub-dev-db:/var/lib/postgresql/data
+      - ./scripts/dev-test-db.sql:/docker-entrypoint-initdb.d/test-db.sql:ro
+
+volumes:
+  recipehub-dev-db:

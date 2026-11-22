@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "keep_awake" boolean DEFAULT true NOT NULL;

@@ -1,0 +1,53 @@
+{
+  "name": "recipehub-api",
+  "version": "1.0.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/run-migrations.ts",
+    "db:studio": "drizzle-kit studio",
+    "test": "vitest run",
+    "reset-password": "tsx src/cli/reset-password.ts",
+    "auth:reset": "tsx src/cli/auth-reset.ts"
+  },
+  "dependencies": {
+    "@fastify/multipart": "^9.4.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/static": "^8.3.0",
+    "@fastify/swagger": "^9.9.2",
+    "@fastify/swagger-ui": "^5.2.6",
+    "@napi-rs/canvas": "^1.1.0",
+    "@simplewebauthn/server": "^13.3.3",
+    "bcryptjs": "^3.0.3",
+    "cheerio": "^1.2.0",
+    "dotenv": "^18.0.9",
+    "drizzle-orm": "^0.45.4",
+    "fastify": "^5.12.7",
+    "fflate": "^0.8.3",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^6.10.1",
+    "openid-client": "^6.8.8",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.4.299",
+    "pg": "^8.23.1",
+    "sharp": "^0.34.5",
+    "tar": "^7.5.22",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.20.5",
+    "@types/nodemailer": "^6.4.24",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}
