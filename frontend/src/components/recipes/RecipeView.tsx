@@ -2,11 +2,12 @@ import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
 import { SessionContext } from "../../session";
 import { api, uploadPhoto } from "../../api";
 import { formatMinutes, ingredientOrder, ingredientsText, listAddress, parseMinutes, parseServings, siteName, stepsText, type Ingredient, type Mine, type Recipe, type Substitution } from "../../recipes";
-import { BackIcon, Check, ChefIcon, GroceryIcon, ShareIcon, ClockIcon, EditIcon, LinkOutIcon, PinIcon, ServingsIcon, StarIcon, TagIcon, Trash, WandIcon } from "../Icons";
+import { BackIcon, Check, ChefIcon, GroceryIcon, PlannerIcon, ShareIcon, ClockIcon, EditIcon, LinkOutIcon, PinIcon, ServingsIcon, StarIcon, TagIcon, Trash, WandIcon } from "../Icons";
 import { useAiStatus } from "../../ai";
 import EnhanceWizard from "./EnhanceWizard";
 import { OrganizeDialog } from "./OrganizeDialog";
 import { SectionButtons, useSectionSave } from "./SectionSave";
+import AddToPlanDialog from "../plan/AddToPlanDialog";
 import { useLive } from "../../live";
 import { Popup } from "../Popup";
 import { RecipeImage } from "./RecipeList";
@@ -63,6 +64,7 @@ export default function RecipeView({ id, startEditing }: { id: number; startEdit
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [shopping, setShopping] = useState(false);
+  const [planning, setPlanning] = useState(false);
   const [sharing, setSharing] = useState(false);
   const prefs = useCookPrefs(id);
   const order = useContext(SessionContext)?.user.ingredientOrder ?? "entered";
@@ -336,6 +338,9 @@ export default function RecipeView({ id, startEditing }: { id: number; startEdit
                 <GroceryIcon className="size-4" /> Add to grocery list
               </button>
             )}
+            <button type="button" onClick={() => setPlanning(true)} className={smallButton}>
+              <PlannerIcon className="size-4" /> Add to meal plan
+            </button>
             <button type="button" onClick={() => setOrganizing(true)} className={smallButton}>
               <TagIcon /> Organize
             </button>
@@ -531,6 +536,7 @@ export default function RecipeView({ id, startEditing }: { id: number; startEdit
       )}
       {sharing && <ShareDialog recipe={r} onClose={() => setSharing(false)} />}
       {shopping && <AddToListDialog title={r.title} source={{ recipes: [{ recipeId: r.id, ...(r.servings ? { servings: Math.round(r.servings * prefs.factor * 100) / 100 } : prefs.factor !== 1 ? { scale: prefs.factor } : {}) }] }} onClose={() => setShopping(false)} />}
+      {planning && <AddToPlanDialog recipeId={r.id} servings={plannedServings(r.servings, prefs.factor)} onClose={() => setPlanning(false)} />}
       {saver.askPopup}
       {organizing && <OrganizeDialog recipe={r} onClose={() => setOrganizing(false)} onSaved={(updated) => setR(updated)} />}
       {confirmDelete && (
@@ -873,3 +879,10 @@ function Substitutions({ recipeId, ingredients, list, onChange, onApplied, class
   );
 }
 
+
+// Servings to put on the meal plan: the scaled count when the recipe has been scaled (whole servings), else none (the recipe's own)
+function plannedServings(servings: number | null | undefined, factor: number) {
+  if (!servings || factor === 1) return undefined;
+  const n = Math.round(servings * factor);
+  return n >= 1 && n !== servings ? n : undefined;
+}

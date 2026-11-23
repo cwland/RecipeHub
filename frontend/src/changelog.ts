@@ -14,6 +14,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.0.2",
+    date: "2026-11-22",
+    title: "Plan from the recipe",
+    added: [
+      "**Add to meal plan from a recipe.** A new button on the recipe page opens a small calendar: pick a day (days that already have meals planned show a dot) and a meal, and it goes on the plan. If you've scaled the recipe, the plan keeps those servings.",
+    ],
+  },
+  {
     version: "1.0.1",
     date: "2026-11-22",
     title: "Steps follow scaling",

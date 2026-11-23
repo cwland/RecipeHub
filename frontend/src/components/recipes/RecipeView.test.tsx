@@ -233,12 +233,12 @@ describe("recipe page header", () => {
     rememberList("#/recipes");
   });
 
-  it("the buttons: Add to grocery list, Organize and Improve with AI; nothing else", async () => {
+  it("the buttons: Add to grocery list, Add to meal plan, Organize and Improve with AI; nothing else", async () => {
     server(on);
     render(<RecipeView id={7} />);
     const h = await header();
     const row = within(h).getByRole("group", { name: "Recipe actions" });
-    expect(within(row).getAllByRole("button").map((b) => b.textContent?.trim())).toEqual(["Add to grocery list", "Organize", "Improve with AI"]);
+    expect(within(row).getAllByRole("button").map((b) => b.textContent?.trim())).toEqual(["Add to grocery list", "Add to meal plan", "Organize", "Improve with AI"]);
     expect(screen.queryByRole("button", { name: "More" })).toBeNull();
     expect(screen.queryByRole("link", { name: /^Edit$/ })).toBeNull();
   });
@@ -798,5 +798,59 @@ describe("a scaled recipe's steps", () => {
     render(<RecipeView id={7} />);
     expect(await screen.findByText("Stir in 2 tbsp ground cumin.")).toBeInTheDocument();
     localStorage.removeItem("recipehub-cook-prefs");
+  });
+});
+
+describe("Add to meal plan from the recipe", () => {
+  const plan = {
+    "GET /api/plan/settings": () => ({ slots: [{ id: "dinner", name: "Dinner" }], weekStart: 1 }),
+    "GET /api/plan": () => [],
+    "POST /api/plan": () => ({ status: 201, json: {} }),
+  };
+  const planBody = (s: { sent: { method: string; path: string; body: any }[] }) => s.sent.find((x) => x.method === "POST" && x.path === "/api/plan")?.body;
+  const addDinner = async (u: ReturnType<typeof userEvent.setup>) => {
+    await u.click(screen.getByRole("button", { name: "Add to meal plan" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add to meal plan" });
+    await u.click(await within(dialog).findByRole("radio", { name: "Dinner" }));
+    await u.click(within(dialog).getByRole("button", { name: "Add" }));
+  };
+
+  it("the button shows even without ingredients and opens the popup", async () => {
+    server(on, recipeJson({ ingredients: [] }), plan);
+    const u = userEvent.setup();
+    render(<RecipeView id={7} />);
+    await u.click(await screen.findByRole("button", { name: "Add to meal plan" }));
+    expect(await screen.findByRole("dialog", { name: "Add to meal plan" })).toBeInTheDocument();
+  });
+
+  it("not scaled: no servings sent (the plan uses the recipe's)", async () => {
+    const s = server(on, recipeJson({ servings: 4 }), plan);
+    const u = userEvent.setup();
+    render(<RecipeView id={7} />);
+    await screen.findByRole("button", { name: "Add to meal plan" });
+    await addDinner(u);
+    await waitFor(() => expect(planBody(s)).toBeDefined());
+    expect(planBody(s)).not.toHaveProperty("servings");
+  });
+
+  it("scaled to 6 servings: the plan gets 6", async () => {
+    const s = server(on, recipeJson({ servings: 4 }), plan);
+    const u = userEvent.setup();
+    render(<RecipeView id={7} />);
+    await u.click(await screen.findByRole("button", { name: "More servings" }));
+    await u.click(await screen.findByRole("button", { name: "More servings" }));
+    await addDinner(u);
+    await waitFor(() => expect(planBody(s)).toMatchObject({ slot: "dinner", recipeId: 7, servings: 6 }));
+  });
+
+  it("no serving count, made 2×: no servings sent", async () => {
+    const s = server(on, recipeJson({ servings: null, yieldText: "24 cookies" }), plan);
+    const u = userEvent.setup();
+    render(<RecipeView id={7} />);
+    await u.click(await screen.findByRole("button", { name: "Make more" }));
+    await u.click(await screen.findByRole("button", { name: "Make more" }));
+    await addDinner(u);
+    await waitFor(() => expect(planBody(s)).toBeDefined());
+    expect(planBody(s)).not.toHaveProperty("servings");
   });
 });
