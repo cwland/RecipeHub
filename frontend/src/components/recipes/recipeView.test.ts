@@ -17,7 +17,7 @@ describe("recipe list view setting", () => {
     localStorage.setItem("recipehub-recipe-view", "{not json");
     expect(loadView()).toEqual({ mode: "cards", across: 4 });
     localStorage.setItem("recipehub-recipe-view", JSON.stringify({ mode: "huh", across: 40 }));
-    expect(loadView()).toEqual({ mode: "cards", across: 6 });
+    expect(loadView()).toEqual({ mode: "cards", across: 8 });
     localStorage.setItem("recipehub-recipe-view", JSON.stringify({ mode: "list", across: 1 }));
     expect(loadView()).toEqual({ mode: "list", across: 2 });
   });
@@ -28,6 +28,13 @@ describe("recipe list view setting", () => {
     expect(gridClass(4).split(" ")[0]).toBe("grid-cols-2");
     expect(gridClass(6)).toContain("xl:grid-cols-6");
     expect(gridClass(6)).not.toMatch(/(^| )grid-cols-6/);
+  });
+
+  it("big screens can go up to 8 across, and smaller screens still cap lower", () => {
+    expect(gridClass(7)).toContain("2xl:grid-cols-7");
+    expect(gridClass(8)).toContain("2xl:grid-cols-8");
+    expect(gridClass(8)).toContain("xl:grid-cols-6");
+    expect(gridClass(8)).not.toMatch(/(^| )(sm:|md:|lg:|xl:)?grid-cols-8/);
   });
 });
 
@@ -47,7 +54,7 @@ describe("Discover's tiles across", () => {
     localStorage.setItem("recipehub-discover-across", "{not json");
     expect(loadDiscoverAcross()).toBe(4);
     localStorage.setItem("recipehub-discover-across", "40");
-    expect(loadDiscoverAcross()).toBe(6);
+    expect(loadDiscoverAcross()).toBe(8);
     localStorage.setItem("recipehub-discover-across", "1");
     expect(loadDiscoverAcross()).toBe(2);
   });

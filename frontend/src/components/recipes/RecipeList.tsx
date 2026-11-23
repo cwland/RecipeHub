@@ -199,7 +199,7 @@ export default function RecipeList({ params, restore }: { params: URLSearchParam
   );
 
   return (
-    <div className="mx-auto flex max-w-[1240px] gap-8 px-3 pb-16 pt-4 sm:px-6">
+    <div className="flex gap-8 px-3 pb-16 pt-4 sm:px-6">
       <aside aria-label="Browse recipes" className="sticky top-4 hidden max-h-[calc(100vh-2rem)] w-56 shrink-0 overflow-y-auto lg:block">
         {sidebar}
       </aside>

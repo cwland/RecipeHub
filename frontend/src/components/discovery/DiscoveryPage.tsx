@@ -200,7 +200,7 @@ function Grid() {
 
   const noFeeds = feeds && !feeds.length;
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+    <div className="px-4 py-6 sm:px-6">
       <header className="flex flex-wrap items-center gap-3">
         <h1 className="mr-auto text-2xl font-bold sm:text-3xl">Discover</h1>
         <button type="button" onClick={() => void refresh()} disabled={refreshing || !feeds?.length} className={button}>

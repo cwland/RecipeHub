@@ -14,6 +14,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.0.3",
+    date: "2026-11-23",
+    title: "Room for big screens",
+    changed: [
+      "**Uses the whole screen.** On a big monitor, your recipes and Discover now fill the width instead of sitting in a box in the middle with empty space on both sides.",
+      "**Up to 8 tiles across.** The − + buttons now go to 7 and 8 on big screens. A laptop still tops out at 6, so one setting looks right on both.",
+    ],
+  },
+  {
     version: "1.0.2",
     date: "2026-11-22",
     title: "Plan from the recipe",

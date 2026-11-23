@@ -399,9 +399,9 @@ describe("Discover's tiles across", () => {
     await u.click(screen.getByRole("button", { name: "More tiles across" }));
     expect(grid()).toHaveAttribute("data-across", "5");
     expect(grid().className).toContain("xl:grid-cols-5");
-    await u.click(screen.getByRole("button", { name: "More tiles across" }));
+    for (let i = 0; i < 3; i++) await u.click(screen.getByRole("button", { name: "More tiles across" }));
     expect(screen.getByRole("button", { name: "More tiles across" })).toBeDisabled();
-    for (let i = 0; i < 4; i++) await u.click(screen.getByRole("button", { name: "Fewer tiles across" }));
+    for (let i = 0; i < 6; i++) await u.click(screen.getByRole("button", { name: "Fewer tiles across" }));
     expect(grid()).toHaveAttribute("data-across", "2");
     expect(screen.getByRole("button", { name: "Fewer tiles across" })).toBeDisabled();
     await u.click(screen.getByRole("button", { name: "More tiles across" }));
@@ -410,5 +410,14 @@ describe("Discover's tiles across", () => {
     await cards();
     expect(grid()).toHaveAttribute("data-across", "3");
     expect(localStorage.getItem("recipehub-recipe-view")).toBeNull(); // the recipe list keeps its own
+  });
+
+  it("uses the whole screen width: not boxed in and centered", async () => {
+    routes();
+    render(<DiscoveryPage />);
+    await cards();
+    const page = screen.getByRole("heading", { name: "Discover" }).closest("header")!.parentElement!;
+    expect(page.className).not.toMatch(/(^| )max-w-/);
+    expect(page.className).not.toMatch(/(^| )mx-auto/);
   });
 });

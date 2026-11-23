@@ -191,12 +191,20 @@ describe("card or list view and tiles across", () => {
     expect(grid()).toHaveAttribute("data-across", "4");
     await u.click(screen.getByRole("button", { name: "More tiles across" }));
     expect(grid()).toHaveAttribute("data-across", "5");
-    await u.click(screen.getByRole("button", { name: "More tiles across" }));
+    for (let i = 0; i < 3; i++) await u.click(screen.getByRole("button", { name: "More tiles across" }));
     expect(screen.getByRole("button", { name: "More tiles across" })).toBeDisabled();
-    expect(JSON.parse(localStorage.getItem("recipehub-recipe-view")!)).toEqual({ mode: "cards", across: 6 });
-    for (let i = 0; i < 4; i++) await u.click(screen.getByRole("button", { name: "Fewer tiles across" }));
+    expect(JSON.parse(localStorage.getItem("recipehub-recipe-view")!)).toEqual({ mode: "cards", across: 8 });
+    for (let i = 0; i < 6; i++) await u.click(screen.getByRole("button", { name: "Fewer tiles across" }));
     expect(grid()).toHaveAttribute("data-across", "2");
     expect(screen.getByRole("button", { name: "Fewer tiles across" })).toBeDisabled();
+  });
+
+  it("uses the whole screen width: not boxed in and centered", async () => {
+    setup();
+    await screen.findByRole("heading", { name: "Chili" });
+    const page = screen.getByRole("complementary", { name: "Browse recipes" }).parentElement!;
+    expect(page.className).not.toMatch(/(^| )max-w-/);
+    expect(page.className).not.toMatch(/(^| )mx-auto/);
   });
 
   it("the view icon switches to a list (no tile size buttons) and back", async () => {

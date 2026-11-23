@@ -3,7 +3,7 @@ export type RecipeView = { mode: "cards" | "list"; across: number };
 
 const KEY = "recipehub-recipe-view";
 export const MIN_ACROSS = 2;
-export const MAX_ACROSS = 6;
+export const MAX_ACROSS = 8;
 const DEFAULT: RecipeView = { mode: "cards", across: 4 };
 
 export function loadView(): RecipeView {
@@ -57,5 +57,8 @@ const GRID: Record<number, string> = {
   4: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4",
   5: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5",
   6: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6",
+  // 7 and 8 are for big monitors; a laptop screen still stops at 6
+  7: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7",
+  8: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8",
 };
 export const gridClass = (across: number) => GRID[across] ?? GRID[DEFAULT.across];
