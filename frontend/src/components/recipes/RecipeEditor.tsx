@@ -74,6 +74,7 @@ function takeChatDraft(): Form | null {
     return {
       ...empty,
       title: d.title,
+      imageUrl: str(d.imageUrl),
       description: str(d.description),
       servings: str(d.servings),
       yieldText: str(d.yieldText),

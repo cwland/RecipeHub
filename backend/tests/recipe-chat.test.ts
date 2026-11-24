@@ -242,3 +242,39 @@ describe("thinking models (OpenRouter)", () => {
     expect(JSON.stringify(logs)).toMatch(/Gemini.*empty/i);
   });
 });
+
+describe("the new recipe's photo", () => {
+  const recipeJsonReply = () => text(JSON.stringify({ isRecipe: true, title: "Weeknight Chili (lighter)", ingredients: ["1 lb ground beef"], steps: ["Brown the beef."], servings: 4 }));
+  const savedChange = async () => {
+    await setUpAi();
+    const id = await newRecipe();
+    t.ai.respond = () => text("- Use Greek yogurt.\n[[CHANGES]]");
+    const reply = (await t.api("POST", `/api/recipes/${id}/chat`, { message: "Lighter", view })).body.reply.id as number;
+    t.ai.respond = recipeJsonReply;
+    return { id, reply };
+  };
+
+  it("an uploaded photo is copied, so the two recipes don't share one file", async () => {
+    const { id, reply } = await savedChange();
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    fs.writeFileSync(path.join(t.photoDir, "11111111-2222-4333-8444-555555555555.webp"), "photo bytes");
+    await t.api("PATCH", `/api/recipes/${id}`, { imageUrl: "/api/photos/11111111-2222-4333-8444-555555555555.webp" });
+    const r = await t.api("POST", `/api/recipes/${id}/chat/${reply}/recipe`);
+    expect(r.status).toBe(200);
+    expect(r.body.imageUrl).toMatch(/^\/api\/photos\/[0-9a-f-]+\.webp$/);
+    expect(r.body.imageUrl).not.toBe("/api/photos/11111111-2222-4333-8444-555555555555.webp");
+    expect(fs.readFileSync(path.join(t.photoDir, r.body.imageUrl.split("/").pop())).toString()).toBe("photo bytes");
+  });
+
+  it("a picture from the web keeps its address", async () => {
+    const { id, reply } = await savedChange();
+    await t.api("PATCH", `/api/recipes/${id}`, { imageUrl: "https://example.com/chili.jpg" });
+    expect((await t.api("POST", `/api/recipes/${id}/chat/${reply}/recipe`)).body.imageUrl).toBe("https://example.com/chili.jpg");
+  });
+
+  it("no photo, none on the new one", async () => {
+    const { id, reply } = await savedChange();
+    expect((await t.api("POST", `/api/recipes/${id}/chat/${reply}/recipe`)).body.imageUrl).toBeNull();
+  });
+});

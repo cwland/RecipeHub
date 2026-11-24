@@ -25,6 +25,7 @@ export interface ChatRecipe {
   cookMinutes: number | null;
   totalMinutes: number | null;
   tags: string[];
+  imageUrl: string | null; // the original's photo (an uploaded one is a copy)
   notes: string;
 }
 

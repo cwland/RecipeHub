@@ -42,6 +42,21 @@ export class Photos {
     return this.save(body);
   }
 
+  // A recipe's photo for another recipe: an uploaded one gets its own copy (deleting either recipe
+  // deletes its file), a picture from the web keeps its address
+  async copy(url: string | null | undefined): Promise<string | null> {
+    if (!url) return null;
+    const name = photoNameOf(url);
+    if (!name) return url;
+    const copy = `${randomUUID()}.webp`;
+    try {
+      await fs.copyFile(path.join(this.dir, name), path.join(this.dir, copy));
+    } catch {
+      return null; // the file is gone: no photo
+    }
+    return photoUrl(copy);
+  }
+
   async remove(url: string | null | undefined) {
     const name = photoNameOf(url);
     if (name) await fs.unlink(path.join(this.dir, name)).catch(() => {});

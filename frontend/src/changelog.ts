@@ -14,6 +14,12 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.1.4",
+    date: "2026-11-24",
+    title: "Photo for chat recipes",
+    fixed: ["**A recipe saved from recipe chat keeps the original's photo.** An uploaded photo is copied, so deleting either recipe doesn't take the other's picture with it."],
+  },
+  {
     version: "1.1.3",
     date: "2026-11-24",
     title: "Recipe chat settings",

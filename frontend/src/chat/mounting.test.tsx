@@ -40,13 +40,14 @@ describe("a recipe written by the chat", () => {
     fakeServer({ "GET /api/categories": () => [], "GET /api/collections": () => [], "GET /api/tags": () => [] });
     sessionStorage.setItem(
       "recipehub-chat-draft",
-      JSON.stringify({ title: "Weeknight Chili (lighter)", description: null, ingredients: ["1 lb beef", "1 cup Greek yogurt"], steps: ["Brown it.", "Simmer."], servings: 4, yieldText: null, prepMinutes: 10, cookMinutes: null, totalMinutes: null, tags: ["beef"], notes: "Made from Weeknight Chili with recipe chat." })
+      JSON.stringify({ title: "Weeknight Chili (lighter)", description: null, ingredients: ["1 lb beef", "1 cup Greek yogurt"], steps: ["Brown it.", "Simmer."], servings: 4, yieldText: null, prepMinutes: 10, cookMinutes: null, totalMinutes: null, tags: ["beef"], imageUrl: "/api/photos/11111111-2222-4333-8444-555555555555.webp", notes: "Made from Weeknight Chili with recipe chat." })
     );
     window.location.hash = "#/recipes/new?draft=chat";
     render(<RecipeEditor />);
     expect(await screen.findByDisplayValue("Weeknight Chili (lighter)")).toBeInTheDocument();
     expect(screen.getByDisplayValue(/1 cup Greek yogurt/)).toBeInTheDocument();
     expect(screen.getByDisplayValue("Made from Weeknight Chili with recipe chat.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Photo address" })).toHaveValue("Uploaded photo"); // the original's photo came along
     expect(sessionStorage.getItem("recipehub-chat-draft")).toBeNull();
   });
 });

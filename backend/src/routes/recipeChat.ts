@@ -30,7 +30,7 @@ type Row = typeof recipeChatMessages.$inferSelect;
 export const msgOf = (r: Row): ChatMsg => ({ id: r.id, role: r.role, content: r.content, canSave: r.canSave, timestamp: r.createdAt.toISOString() });
 
 export default async function recipeChatRoutes(app: FastifyInstance) {
-  const { db, ai } = app;
+  const { db, ai, photos } = app;
 
   // Signed in (not an API key), recipe chat on, and the recipe there: who's asking and the recipe
   const prepare = async (req: FastifyRequest) => {
@@ -122,7 +122,7 @@ export default async function recipeChatRoutes(app: FastifyInstance) {
       } catch (e) {
         throw new ChatError("garbled", (e as Error).message);
       }
-      return { ...made, notes: `Made from ${recipe.title} with recipe chat.` };
+      return { ...made, imageUrl: await photos.copy(recipe.imageUrl), notes: `Made from ${recipe.title} with recipe chat.` };
     } catch (e) {
       return fail(reply, e);
     }
