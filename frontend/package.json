@@ -1,6 +1,6 @@
 {
   "name": "recipehub-web",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "license": "MIT",
   "private": true,
   "type": "module",

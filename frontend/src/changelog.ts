@@ -14,6 +14,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.1.0",
+    date: "2026-11-24",
+    title: "Recipe chat",
+    added: [
+      "**Chat about a recipe.** A chat bubble on every recipe and in Cook mode. Ask it to swap a missing ingredient, cut calories, make it healthier or dairy-free, or change the servings. It knows the recipe as you're viewing it, and only talks cooking.",
+      "**Save a change as a new recipe.** When the chat suggests changes, say yes to Save as new recipe and it writes the whole recipe with them, ready to check in the editor. The original stays as it is.",
+      "**Your own chats.** Everyone in the household has their own chat for each recipe. Clear chat starts over.",
+      "**Household notes.** The owner can add notes in Settings › Recipes (\"We're dairy-free\") that the chat keeps in mind, and pick which AI answers when more than one is set up.",
+    ],
+  },
+  {
     version: "1.0.3",
     date: "2026-11-23",
     title: "Room for big screens",
