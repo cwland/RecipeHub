@@ -9,7 +9,7 @@ import { decryptSecret, encryptSecret } from "./secrets.js";
 // backup file can be restored on another server (one with a different JWT_SECRET) that has the
 // same BACKUP_KEY. Without BACKUP_KEY the settings are still backed up, minus the secrets.
 
-export const SETTING_KEYS = ["ai", "email", "features", "planner"] as const;
+export const SETTING_KEYS = ["ai", "email", "features", "planner", "recipeChatNotes", "recipeChatService"] as const;
 export const BACKUP_KEY_MIN = 16;
 
 export interface BackupSecrets {

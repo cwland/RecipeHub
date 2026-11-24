@@ -67,8 +67,16 @@ describe("restore", () => {
     const res = await t.api("POST", "/api/import?confirm=replace", exported);
     expect(res.status).toBe(200);
     expect(res.body.safetyBackup).toMatch(/before-restore\.tar\.gz$/);
-    expect((await t.api("GET", "/api/settings/features")).body).toEqual({ apiKeys: true, ai: false, aiEnhance: false, autoNutrition: false, recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true });
+    expect((await t.api("GET", "/api/settings/features")).body).toEqual({ apiKeys: true, ai: false, aiEnhance: false, autoNutrition: false, recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true, recipeChat: false });
     expect((await t.api("GET", "/api/auth/me")).body.user.username).toBe("alex");
+  });
+
+  it("keeps the recipe chat household notes", async () => {
+    await t.api("PUT", "/api/settings/ai/recipe-chat", { notes: "We're dairy-free." });
+    const exported = JSON.parse((await raw("/api/export")).body);
+    await t.api("PUT", "/api/settings/ai/recipe-chat", { notes: "" });
+    expect((await t.api("POST", "/api/import?confirm=replace", exported)).status).toBe(200);
+    expect((await t.api("GET", "/api/settings/ai/recipe-chat")).body.notes).toBe("We're dairy-free.");
   });
 
   it("a backup brings back recipe photos too", async () => {
