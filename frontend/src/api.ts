@@ -20,7 +20,8 @@ export function setToken(token: string | null) {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string, public details?: { path: string; message: string }[]) {
+  // kind: the server's one-word reason, when it gives one (recipe chat: "timeout", "garbled"…)
+  constructor(public status: number, message: string, public details?: { path: string; message: string }[], public kind?: string) {
     super(message);
   }
 }
@@ -63,7 +64,7 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
   if (res.status === 204) return undefined as T;
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, data.error ?? `Request failed (${res.status})`, data.details);
+  if (!res.ok) throw new ApiError(res.status, data.error ?? `Request failed (${res.status})`, data.details, typeof data.kind === "string" ? data.kind : undefined);
   return data as T;
 }
 
