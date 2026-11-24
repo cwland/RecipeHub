@@ -214,3 +214,31 @@ describe("recipe text that tries to break out", () => {
     expect(p).toContain("Title: Chili $& {{servings}}"); // written as is, not treated as a pattern
   });
 });
+
+describe("thinking models (OpenRouter)", () => {
+  const openRouter = [
+    { name: "Gemini", provider: "openrouter", model: "google/gemini-3.5-flash", apiKey: "sk-or-test" },
+    { name: "Haiku", provider: "openrouter", model: "anthropic/claude-haiku-5.5", apiKey: "sk-or-test" },
+  ];
+  it("asks for low thinking effort with room left for the answer", async () => {
+    await setUpAi(openRouter);
+    const id = await newRecipe();
+    t.ai.respond = () => text("Use less oil.");
+    expect((await t.api("POST", `/api/recipes/${id}/chat`, { message: "Lighter?", view })).status).toBe(200);
+    const body = t.ai.calls[0].body as any;
+    expect(body.reasoning).toEqual({ effort: "low" });
+    expect(body.max_tokens).toBeGreaterThanOrEqual(4000);
+  });
+
+  it("an empty answer from one service moves on to the next, and is logged", async () => {
+    await setUpAi(openRouter);
+    const id = await newRecipe();
+    let n = 0;
+    t.ai.respond = () => (++n === 1 ? { status: 200, json: { choices: [{ message: { content: "" }, finish_reason: "length" }] } } : text("Use less oil."));
+    const r = await t.api("POST", `/api/recipes/${id}/chat`, { message: "Lighter?", view });
+    expect(r.status).toBe(200);
+    expect(r.body.reply.content).toBe("Use less oil.");
+    const logs = (await t.api("GET", "/api/logs?category=ai")).body;
+    expect(JSON.stringify(logs)).toMatch(/Gemini.*empty/i);
+  });
+});

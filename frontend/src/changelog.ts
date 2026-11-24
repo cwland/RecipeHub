@@ -14,6 +14,12 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.1.2",
+    date: "2026-11-24",
+    title: "Recipe chat answers",
+    fixed: ["**Recipe chat answers with models that think first** (like Gemini Flash on OpenRouter). They used all their room thinking and sent back nothing, which showed as \"came back garbled\". Now they're asked to think briefly, and an empty answer moves on to your next AI service."],
+  },
+  {
     version: "1.1.1",
     date: "2026-11-24",
     title: "Recipe chat fix",

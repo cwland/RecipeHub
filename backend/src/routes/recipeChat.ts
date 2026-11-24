@@ -91,7 +91,7 @@ export default async function recipeChatRoutes(app: FastifyInstance) {
     const upTo = all.slice(0, all.findIndex((m) => m.id === userMessage.id) + 1);
     const { notes } = await getRecipeChatSettings(db);
     try {
-      const text = await answer(buildSystemPrompt(recipe, body.view, notes), historyForAi(upTo, userMessage.id), 800);
+      const text = await answer(buildSystemPrompt(recipe, body.view, notes), historyForAi(upTo, userMessage.id), 4000);
       const { content, canSave } = splitMarker(text);
       const [row] = await db.insert(recipeChatMessages).values({ recipeId: recipe.id, userId, role: "assistant", content, canSave }).returning();
       return { userMessage, reply: msgOf(row) };
@@ -113,7 +113,7 @@ export default async function recipeChatRoutes(app: FastifyInstance) {
     try {
       const s = await services();
       if (!s?.services.length) throw new ChatError("notSetUp", "Recipe chat needs AI set up in Settings › AI.");
-      const { text } = await ai.chatText(s.services, RECIPE_JSON_SYSTEM, user, { maxTokens: 4000, minWaitSec: 60, timeoutSec: s.timeoutSec });
+      const { text } = await ai.chatText(s.services, RECIPE_JSON_SYSTEM, user, { maxTokens: 8000, minWaitSec: 60, timeoutSec: s.timeoutSec });
       const json = parseJsonReply(text);
       if (!json || typeof json !== "object") throw new ChatError("garbled", "The AI's recipe couldn't be read.");
       let made;

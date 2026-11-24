@@ -524,10 +524,19 @@ export class AiService {
     }
   }
 
-  // A plain-text answer (not JSON) from these services in order, waiting at least minWaitSec
+  // A plain-text answer (not JSON) from these services in order, waiting at least minWaitSec.
+  // Models that think first are asked to think briefly; an empty answer (all the room went on
+  // thinking) is logged and the next service is asked.
   async chatText(services: ActiveService[], system: string, user: string, o: { maxTokens: number; minWaitSec: number; timeoutSec: number }) {
-    const { text, service } = await this.chatWithFailover(services, system, user, o.maxTokens, Math.max(o.timeoutSec, o.minWaitSec) * 1000 * this.timeScale);
-    return { text: typeof text === "string" ? text : "", service };
+    let left = services;
+    for (;;) {
+      const { text, stop, service, index } = await this.chatWithFailover(left, system, user, o.maxTokens, Math.max(o.timeoutSec, o.minWaitSec) * 1000 * this.timeScale, [], undefined, { reasoning: "low" });
+      const answer = typeof text === "string" ? text : "";
+      if (answer.trim()) return { text: answer, service };
+      left = left.slice(index + 1);
+      await logEvent(this.db, { category: "ai", level: left.length ? "warning" : "error", source: service.name, event: `${service.name} sent back an empty answer${left.length ? `, asking ${left[0].name} instead` : ""}`, detail: `Stopped: ${stop ?? "unknown"}` });
+      if (!left.length) throw new AiError(`${service.name} sent back an empty answer${stop && /length|max_tokens/i.test(stop) ? " (it ran out of room)" : ""}.`);
+    }
   }
 
   // For the app: is AI there, and can it read photos? (no settings or keys)
