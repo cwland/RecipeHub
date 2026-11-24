@@ -10,7 +10,8 @@ export type Features = Record<Feature, boolean>;
 // The master switch at the top of Settings > AI and API keys. Off hides that tab's
 // settings (and the server stops using the feature); everything saved is kept for when it's back on.
 // The switch saves right away.
-export function FeatureSwitch({ feature, title, text, offText, children, needsAi }: { feature: Feature; title: string; text: ReactNode; offText: ReactNode; children: ReactNode; needsAi?: boolean }) {
+// inside: the settings that come with the switch show in the switch's own box (not as cards below it)
+export function FeatureSwitch({ feature, title, text, offText, children, needsAi, inside }: { feature: Feature; title: string; text: ReactNode; offText: ReactNode; children: ReactNode; needsAi?: boolean; inside?: boolean }) {
   const ai = useAiStatus();
   const blocked = !!needsAi && !ai.ready; // AI off or never set up: shown off, and can't be changed
   const [on, setOn] = useState<boolean | null>(null);
@@ -61,8 +62,9 @@ export function FeatureSwitch({ feature, title, text, offText, children, needsAi
             <Notice msg={msg} />
           </div>
         )}
+        {inside && on && !blocked && <div className="mt-5 border-t border-line pt-5">{children}</div>}
       </section>
-      {on && children}
+      {!inside && on && children}
     </>
   );
 }

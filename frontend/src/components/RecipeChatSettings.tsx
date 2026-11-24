@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { FeatureSwitch } from "./FeatureSwitch";
-import { Card, Notice } from "./settingsUi";
+import { Notice } from "./settingsUi";
 
 // Settings › Recipes › Recipe chat: the switch, and (while it's on) notes about the household that
 // go into every chat, and which AI answers (only offered when more than one is set up)
@@ -19,6 +19,7 @@ export function RecipeChatSwitch() {
       title="Recipe chat"
       text="A chat bubble on every recipe and in Cook mode. Ask it to swap a missing ingredient, make a recipe lighter or dairy-free, or change the servings. Each person has their own chats, and a good change can be saved as a new recipe."
       offText="Off: there's no chat bubble on recipes."
+      inside
     >
       <RecipeChatOptions />
     </FeatureSwitch>
@@ -54,18 +55,18 @@ function RecipeChatOptions() {
 
   if (!s) return msg ? <Notice msg={msg} /> : null;
   return (
-    <Card title="Recipe chat settings" description="For everyone in the household.">
+    <div>
       <label className="block">
         <span className="text-sm font-semibold text-subtle">Household notes</span>
         <textarea
           className={`${field} min-h-24`}
           maxLength={1000}
           value={notes}
-          placeholder="We're dairy-free. Kids don't like mushrooms."
+          placeholder="Example: We're dairy-free. The kids don't like mushrooms."
           onChange={(e) => setNotes(e.target.value)}
           onBlur={() => notes.trim() !== s.notes && void save({ notes: notes.trim() })}
         />
-        <span className="mt-1 block text-sm text-subtle">The chat keeps these in mind in every answer.</span>
+        <span className="mt-1 block text-sm text-subtle">For everyone in the household: the chat keeps these in mind in every answer.</span>
       </label>
       {s.services.length > 1 && (
         <label className="mt-4 block">
@@ -86,6 +87,6 @@ function RecipeChatOptions() {
           <Notice msg={msg} />
         </div>
       )}
-    </Card>
+    </div>
   );
 }

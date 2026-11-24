@@ -40,4 +40,12 @@ describe("Recipe chat settings", () => {
     await u.selectOptions(pick, "Claude");
     await waitFor(() => expect(server.writes().find((w) => w.path === "/api/settings/ai/recipe-chat")?.body).toEqual({ serviceId: "b" }));
   });
+
+  it("sits inside the Recipe chat switch's box, with an example that doesn't look filled in", async () => {
+    fakeServer(on([{ id: "a", name: "Home AI" }]));
+    render(<RecipeChatSwitch />);
+    const box = await screen.findByRole("textbox", { name: /Household notes/ });
+    expect(screen.getByRole("region", { name: "Recipe chat" })).toContainElement(box);
+    expect(box).toHaveAttribute("placeholder", expect.stringMatching(/^Example: /));
+  });
 });
