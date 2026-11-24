@@ -54,10 +54,41 @@ const labelText = "text-sm font-semibold text-subtle";
 const card = "rounded-2xl bg-container p-5 sm:p-6";
 
 // A new recipe from a blocked import (#/recipes/new?source=<link>): the link is filled in
+// A new recipe written by recipe chat (#/recipes/new?draft=chat): filled in from the draft the chat left
 const startingForm = (): Form => {
-  const source = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("source");
+  const q = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  if (q.get("draft") === "chat") {
+    const d = takeChatDraft();
+    if (d) return d;
+  }
+  const source = q.get("source");
   return source && /^https?:\/\//.test(source) ? { ...empty, sourceUrl: source } : empty;
 };
+function takeChatDraft(): Form | null {
+  try {
+    // read here, removed once the editor is showing it (React may run this twice in development)
+    const raw = sessionStorage.getItem("recipehub-chat-draft");
+    const d = raw ? JSON.parse(raw) : null;
+    if (!d || typeof d.title !== "string") return null;
+    const steps = (Array.isArray(d.steps) ? d.steps : []).map((s: unknown) => (typeof s === "string" ? s : s && typeof s === "object" && "section" in s ? `# ${(s as { section: string }).section}` : "")).filter(Boolean);
+    return {
+      ...empty,
+      title: d.title,
+      description: str(d.description),
+      servings: str(d.servings),
+      yieldText: str(d.yieldText),
+      prepMinutes: str(d.prepMinutes),
+      cookMinutes: str(d.cookMinutes),
+      totalMinutes: str(d.totalMinutes),
+      ingredients: (Array.isArray(d.ingredients) ? d.ingredients : []).join("\n"),
+      steps: steps.join("\n\n"),
+      notes: str(d.notes),
+      tags: Array.isArray(d.tags) ? d.tags : [],
+    };
+  } catch {
+    return null;
+  }
+}
 
 export default function RecipeEditor({ id }: { id?: number }) {
   const [form, setForm] = useState<Form | null>(id ? null : startingForm);
@@ -71,6 +102,14 @@ export default function RecipeEditor({ id }: { id?: number }) {
   const [versioning, setVersioning] = useState(false);
   // Saving changes with versioning on: what to send while asking "current or new version?"
   const [asking, setAsking] = useState<Record<string, unknown> | null>(null);
+
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem("recipehub-chat-draft");
+    } catch {
+      /* storage blocked */
+    }
+  }, []);
 
   useEffect(() => {
     // the choices are extras: a recipe can still be typed in without them

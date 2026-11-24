@@ -7,6 +7,8 @@ import { useLockBodyScroll } from "../../scrollLock";
 import { ChevronLeft, ChevronRight, CloseIcon, RecipesIcon } from "../Icons";
 import { ScaleControls, useCookPrefs } from "./ScaleControls";
 import { StepText } from "./StepText";
+import { useAiStatus } from "../../ai";
+import RecipeChat from "../../chat/RecipeChat";
 
 // Cook Mode: one step at a time, big, with the screen kept awake. Ingredients are a checklist
 // (beside the step on wide screens, a drawer on phones) and the ones this step uses are lit up.
@@ -75,6 +77,7 @@ function useWakeLock(wanted: boolean) {
 }
 
 export default function CookMode({ id }: { id: number }) {
+  const ai = useAiStatus();
   const [r, setR] = useState<Recipe | null>(null);
   const [error, setError] = useState("");
   const saved = useMemo(() => readProgress(id), [id]);
@@ -306,6 +309,8 @@ export default function CookMode({ id }: { id: number }) {
           </button>
         </div>
       </footer>
+
+      {ai.recipeChat && <RecipeChat recipe={r} factor={prefs.factor} units={prefs.units} cook />}
 
       {/* Phones: ingredients slide up */}
       {drawer && (

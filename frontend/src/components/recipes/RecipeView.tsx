@@ -4,6 +4,7 @@ import { api, uploadPhoto } from "../../api";
 import { formatMinutes, ingredientOrder, ingredientsText, listAddress, parseMinutes, parseServings, siteName, stepsText, type Ingredient, type Mine, type Recipe, type Substitution } from "../../recipes";
 import { BackIcon, Check, ChefIcon, GroceryIcon, PlannerIcon, ShareIcon, ClockIcon, EditIcon, LinkOutIcon, PinIcon, ServingsIcon, StarIcon, TagIcon, Trash, WandIcon } from "../Icons";
 import { useAiStatus } from "../../ai";
+import RecipeChat from "../../chat/RecipeChat";
 import EnhanceWizard from "./EnhanceWizard";
 import { OrganizeDialog } from "./OrganizeDialog";
 import { SectionButtons, useSectionSave } from "./SectionSave";
@@ -536,6 +537,7 @@ export default function RecipeView({ id, startEditing }: { id: number; startEdit
       )}
       {sharing && <ShareDialog recipe={r} onClose={() => setSharing(false)} />}
       {shopping && <AddToListDialog title={r.title} source={{ recipes: [{ recipeId: r.id, ...(r.servings ? { servings: Math.round(r.servings * prefs.factor * 100) / 100 } : prefs.factor !== 1 ? { scale: prefs.factor } : {}) }] }} onClose={() => setShopping(false)} />}
+      {ai.recipeChat && <RecipeChat recipe={r} factor={prefs.factor} units={prefs.units} />}
       {planning && <AddToPlanDialog recipeId={r.id} servings={plannedServings(r.servings, prefs.factor)} onClose={() => setPlanning(false)} />}
       {saver.askPopup}
       {organizing && <OrganizeDialog recipe={r} onClose={() => setOrganizing(false)} onSaved={(updated) => setR(updated)} />}
