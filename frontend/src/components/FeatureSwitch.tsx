@@ -4,7 +4,7 @@ import { api } from "../api";
 import { Toggle } from "./settingsUi";
 import { Notice } from "./settingsUi";
 
-export type Feature = "ai" | "apiKeys" | "aiEnhance" | "autoNutrition" | "recipeVersions" | "savedCopies" | "publicLinks" | "discoveryRefresh";
+export type Feature = "ai" | "apiKeys" | "aiEnhance" | "autoNutrition" | "recipeVersions" | "savedCopies" | "publicLinks" | "discoveryRefresh" | "recipeChat";
 export type Features = Record<Feature, boolean>;
 
 // The master switch at the top of Settings > AI and API keys. Off hides that tab's

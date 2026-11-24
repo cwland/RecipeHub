@@ -6,6 +6,7 @@ export interface AiStatus {
   ready: boolean;
   photos: boolean;
   enhance: boolean; // AI Enhance is on (and AI is ready)
+  recipeChat?: boolean; // Recipe chat is on (and AI is ready)
 }
 let cached: Promise<AiStatus> | null = null;
 export function useAiStatus(): AiStatus {
