@@ -524,6 +524,12 @@ export class AiService {
     }
   }
 
+  // A plain-text answer (not JSON) from these services in order, waiting at least minWaitSec
+  async chatText(services: ActiveService[], system: string, user: string, o: { maxTokens: number; minWaitSec: number; timeoutSec: number }) {
+    const { text, service } = await this.chatWithFailover(services, system, user, o.maxTokens, Math.max(o.timeoutSec, o.minWaitSec) * 1000 * this.timeScale);
+    return { text: typeof text === "string" ? text : "", service };
+  }
+
   // For the app: is AI there, and can it read photos? (no settings or keys)
   async status() {
     const ready = !!(await this.active());

@@ -36,6 +36,7 @@ import { registerBatchImprove } from "./lib/improve.js";
 import { registerFileImport, registerImportJobs, registerPhotoImport } from "./lib/importJobs.js";
 import { registerAisleSorting } from "./lib/aiHelpers.js";
 import aiRoutes from "./routes/ai.js";
+import recipeChatRoutes from "./routes/recipeChat.js";
 import shareRoutes from "./routes/share.js";
 import inboxRoutes from "./routes/inbox.js";
 import discoveryRoutes from "./routes/discovery.js";
@@ -267,6 +268,7 @@ export function buildApp({ db, jwtSecret, logger = false, backupDir = defaultBac
   app.register(recipeRoutes);
   app.register(importRoutes);
   app.register(aiRoutes);
+  app.register(recipeChatRoutes);
   app.register(shareRoutes);
   app.register(householdRoutes);
   app.register(planRoutes);

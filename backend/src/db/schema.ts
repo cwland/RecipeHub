@@ -350,6 +350,25 @@ export const recipeUser = pgTable(
   (t) => [primaryKey({ columns: [t.recipeId, t.userId] }), index("recipe_user_user_idx").on(t.userId)]
 );
 
+// Recipe chat: each person's own conversation about a recipe (nobody else in the household sees it)
+export const recipeChatMessages = pgTable(
+  "recipe_chat_messages",
+  {
+    id: serial("id").primaryKey(),
+    recipeId: integer("recipe_id")
+      .notNull()
+      .references(() => recipes.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").$type<"user" | "assistant">().notNull(),
+    content: text("content").notNull(),
+    canSave: boolean("can_save").notNull().default(false), // the reply suggests changes that can become a new recipe
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("recipe_chat_messages_user_recipe_idx").on(t.userId, t.recipeId, t.createdAt)]
+);
+
 // What was swapped when cooking it ("Greek yogurt instead of sour cream"), newest first
 export const substitutions = pgTable(
   "substitutions",
