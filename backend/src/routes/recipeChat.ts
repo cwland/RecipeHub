@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { and, asc, eq } from "drizzle-orm";
 import { recipeChatMessages, recipes } from "../db/schema.js";
-import { AiError } from "../lib/ai.js";
+import { AiError, parseJsonReply } from "../lib/ai.js";
+import { aiRecipe, RECIPE_JSON_SYSTEM } from "../lib/importRecipe.js";
 import { isOn } from "../lib/features.js";
 import { HttpError, notFound } from "../lib/errors.js";
 import { idParam } from "../lib/validation.js";
@@ -94,6 +95,34 @@ export default async function recipeChatRoutes(app: FastifyInstance) {
       const { content, canSave } = splitMarker(text);
       const [row] = await db.insert(recipeChatMessages).values({ recipeId: recipe.id, userId, role: "assistant", content, canSave }).returning();
       return { userMessage, reply: msgOf(row) };
+    } catch (e) {
+      return fail(reply, e);
+    }
+  });
+
+  // A reply that suggested changes -> the whole recipe with them, for the new-recipe editor (nothing is saved)
+  app.post("/api/recipes/:id/chat/:messageId/recipe", async (req, reply) => {
+    const { userId, recipe } = await prepare(req);
+    const messageId = z.coerce.number().int().positive().parse((req.params as { messageId: string }).messageId);
+    const all = await messagesOf(recipe.id, userId);
+    const at = all.findIndex((m) => m.id === messageId && m.role === "assistant" && m.canSave);
+    if (at < 0) throw notFound("Message");
+    const original = buildSystemPrompt(recipe, { factor: 1, units: "original" }, "").split("<<<RECIPE")[1].split("RECIPE>>>")[0].trim();
+    const chat = all.slice(Math.max(0, at - 11), at + 1).map((m) => `${m.role === "user" ? "Cook" : "Assistant"}: ${m.content}`).join("\n\n");
+    const user = `The original recipe:\n${original}\n\nThe conversation about changing it:\n${chat}\n\nWrite the full recipe with the changes from the assistant's last reply applied. Give it a title that says what changed (for example "${recipe.title} (dairy-free)").`;
+    try {
+      const s = await services();
+      if (!s?.services.length) throw new ChatError("notSetUp", "Recipe chat needs AI set up in Settings › AI.");
+      const { text } = await ai.chatText(s.services, RECIPE_JSON_SYSTEM, user, { maxTokens: 4000, minWaitSec: 60, timeoutSec: s.timeoutSec });
+      const json = parseJsonReply(text);
+      if (!json || typeof json !== "object") throw new ChatError("garbled", "The AI's recipe couldn't be read.");
+      let made;
+      try {
+        made = aiRecipe(json as Record<string, unknown>);
+      } catch (e) {
+        throw new ChatError("garbled", (e as Error).message);
+      }
+      return { ...made, notes: `Made from ${recipe.title} with recipe chat.` };
     } catch (e) {
       return fail(reply, e);
     }

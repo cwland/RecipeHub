@@ -167,3 +167,39 @@ describe("chatting about a recipe", () => {
     expect(t.ai.calls[0].url).toContain("10.0.0.5");
   });
 });
+
+describe("saving a suggestion as a new recipe", () => {
+  const chatWithChange = async () => {
+    await setUpAi();
+    const id = await newRecipe();
+    t.ai.respond = () => text("- Use Greek yogurt instead of sour cream.\n[[CHANGES]]");
+    const r = await t.api("POST", `/api/recipes/${id}/chat`, { message: "Make it lighter", view });
+    return { id, reply: r.body.reply.id as number };
+  };
+
+  it("writes the whole recipe with the change, and notes where it came from", async () => {
+    const { id, reply } = await chatWithChange();
+    t.ai.calls.length = 0;
+    t.ai.respond = () => text(JSON.stringify({ isRecipe: true, title: "Weeknight Chili (lighter)", ingredients: ["1 lb ground beef", "1 cup Greek yogurt"], steps: ["Brown the beef.", "Simmer 30 minutes."], servings: 4 }));
+    const r = await t.api("POST", `/api/recipes/${id}/chat/${reply}/recipe`);
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ title: "Weeknight Chili (lighter)", ingredients: ["1 lb ground beef", "1 cup Greek yogurt"], servings: 4, notes: "Made from Weeknight Chili with recipe chat." });
+    expect(JSON.stringify(t.ai.calls[0].body)).toContain("Greek yogurt instead of sour cream");
+  });
+
+  it("only for your own replies that suggest changes", async () => {
+    const { id, reply } = await chatWithChange();
+    await t.api("POST", "/api/household/members", { username: "sam", password: "sam-password-1" });
+    const sam = (await t.api("POST", "/api/auth/login", { username: "sam", password: "sam-password-1" })).body.token;
+    expect((await as(sam)("POST", `/api/recipes/${id}/chat/${reply}/recipe`)).status).toBe(404);
+    expect((await t.api("POST", `/api/recipes/${id}/chat/${reply - 1}/recipe`)).status).toBe(404); // the question, not a reply
+  });
+
+  it("says so when the recipe it wrote can't be read", async () => {
+    const { id, reply } = await chatWithChange();
+    t.ai.respond = () => text("Here you go, lovely chili!");
+    const r = await t.api("POST", `/api/recipes/${id}/chat/${reply}/recipe`);
+    expect(r.status).toBe(502);
+    expect(r.body.kind).toBe("garbled");
+  });
+});

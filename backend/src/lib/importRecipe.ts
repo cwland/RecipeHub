@@ -234,7 +234,7 @@ export function pageInfo(html: string, pageUrl: string) {
 
 // ---------- 2. AI ----------
 
-const SYSTEM = `You turn recipe text into JSON. Reply with JSON only, in this shape:
+export const RECIPE_JSON_SYSTEM = `You turn recipe text into JSON. Reply with JSON only, in this shape:
 {"isRecipe": true, "title": "", "description": "", "ingredients": ["1 cup flour", "For the sauce:", "2 tbsp butter"], "steps": ["Heat the oven to 350°F.", "Mix..."], "servings": 4, "yieldText": "", "prepMinutes": 10, "cookMinutes": 20, "totalMinutes": 30, "tags": ["vegetarian"]}
 Rules: copy ingredient lines as written, one per line, but write amounts as numbers ("1 lb ground beef", not "One pound of ground beef"; "1/2 cup", not "half a cup"); a heading line ends with ":". Steps are the method in order, without numbers. Leave out stories, ads, comments and nutrition. Use null for anything not given; never invent amounts or times. "tags": up to 5 short lowercase words (cuisine, diet, main ingredient). If the text has no recipe, reply {"isRecipe": false}.`;
 
@@ -242,7 +242,7 @@ export async function recipeWithAi(ai: AiService, text: string, hint?: string): 
   const active = await ai.active();
   if (!active) throw new AiError("This doesn't have recipe data RecipeHub can read on its own, and AI is off. Turn on AI in Settings › AI to read it, or type the recipe in.");
   const input = text.slice(0, 24000);
-  const { text: reply } = await ai.chatWithFailover(active.services, SYSTEM, `${hint ? `${hint}\n\n` : ""}${input}`, 4000, Math.max(active.timeoutSec, 60) * 1000);
+  const { text: reply } = await ai.chatWithFailover(active.services, RECIPE_JSON_SYSTEM, `${hint ? `${hint}\n\n` : ""}${input}`, 4000, Math.max(active.timeoutSec, 60) * 1000);
   const r = parseJsonReply(reply) as Record<string, unknown> | null;
   if (!r || typeof r !== "object") throw new AiError("The AI's answer couldn't be read. Try again, or try another AI service.");
   return aiRecipe(r);
@@ -250,7 +250,7 @@ export async function recipeWithAi(ai: AiService, text: string, hint?: string): 
 
 // ---------- photos: recipe cards, cookbook pages, screenshots ----------
 
-const PHOTO_SYSTEM = `${SYSTEM}
+const PHOTO_SYSTEM = `${RECIPE_JSON_SYSTEM}
 The recipe is in the photos (a handwritten or printed recipe card, a cookbook page, a screenshot). The photos may be several pages of one recipe, in order. Read handwriting carefully; keep the writer's amounts and wording, and fix only obvious spelling. Add "dishPhoto": the number (1, 2...) of a photo that shows the finished food, or null if none does.`;
 
 export async function recipeFromPhotos(ai: AiService, images: AiImage[]): Promise<ImportedRecipe & { dishPhoto: number | null }> {
