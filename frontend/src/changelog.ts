@@ -14,6 +14,12 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.1.3",
+    date: "2026-11-24",
+    title: "Recipe chat settings",
+    changed: ["**Recipe chat settings sit in its switch's box.** Household notes and the AI picker show right under the switch, and the notes box's example now starts with \"Example:\" so it doesn't look filled in."],
+  },
+  {
     version: "1.1.2",
     date: "2026-11-24",
     title: "Recipe chat answers",
