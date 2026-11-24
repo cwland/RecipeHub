@@ -14,12 +14,15 @@ export const CHAT_IDEAS = ["Substitute a missing ingredient", "Reduce calories",
 export const DRAFT_KEY = "recipehub-chat-draft";
 
 const WINDOW: Size = { w: 380, h: 520 };
-const PHONE = 640; // narrower than this: a bottom panel instead of a floating window
+// Narrower than 640px, or too short for the window (a phone on its side): a bottom panel instead
+const small = () => window.innerWidth < 640 || window.innerHeight < WINDOW.h + 40;
+// Cook mode: the closed bubble stays clear of the top bar and the step buttons at the bottom
+const COOK_KEEP_OUT = { top: 64, bottom: 96 };
 
 const useNarrow = () => {
-  const [narrow, setNarrow] = useState(() => window.innerWidth < PHONE);
+  const [narrow, setNarrow] = useState(small);
   useEffect(() => {
-    const again = () => setNarrow(window.innerWidth < PHONE);
+    const again = () => setNarrow(small());
     window.addEventListener("resize", again);
     return () => window.removeEventListener("resize", again);
   }, []);
@@ -29,14 +32,15 @@ const useNarrow = () => {
 export default function RecipeChat({ recipe, factor, units, cook = false }: { recipe: Recipe; factor: number; units: Units; cook?: boolean }) {
   const bubble: Size = cook ? { w: 44, h: 44 } : { w: 56, h: 56 };
   const [open, setOpen] = useState(false);
+  const [opened, setOpened] = useState(false); // once opened, the chat stays mounted (a wait isn't lost by minimizing)
   const narrow = useNarrow();
   // Cook mode: halfway down the right edge, clear of the step buttons (bottom) and the top bar
   const drag = useDraggable(cook ? "recipehub.chat.pos.cook" : "recipehub.chat.pos", open && !narrow ? WINDOW : bubble, () =>
-    cook ? { x: window.innerWidth - bubble.w - 16, y: Math.round(window.innerHeight * 0.4) } : { x: window.innerWidth - bubble.w - 24, y: window.innerHeight - bubble.h - 24 }
+    cook ? { x: window.innerWidth - bubble.w - 16, y: Math.round(window.innerHeight * 0.4) } : { x: window.innerWidth - bubble.w - 24, y: window.innerHeight - bubble.h - 24 },
+    cook && !open ? COOK_KEEP_OUT : undefined
   );
 
-  if (!open)
-    return (
+  const bubbleButton = !open && (
       <button
         type="button"
         aria-label="Open recipe chat"
@@ -44,7 +48,11 @@ export default function RecipeChat({ recipe, factor, units, cook = false }: { re
         className="fixed z-[9999] flex touch-none items-center justify-center rounded-full bg-action text-white shadow-lg hover:opacity-90"
         style={{ left: drag.pos.x, top: drag.pos.y, width: bubble.w, height: bubble.h }}
         {...drag.handlers}
-        onClick={() => !drag.wasDrag() && setOpen(true)}
+        onClick={() => {
+          if (drag.wasDrag()) return;
+          setOpen(true);
+          setOpened(true);
+        }}
       >
         <MessageCircle className={cook ? "size-5" : "size-6"} aria-hidden />
       </button>
@@ -54,9 +62,14 @@ export default function RecipeChat({ recipe, factor, units, cook = false }: { re
     ? { className: "fixed inset-x-0 bottom-0 z-[9999] flex flex-col rounded-t-2xl border border-line bg-container shadow-2xl", style: { height: cook ? "60vh" : "85vh" } }
     : { className: "fixed z-[9999] flex flex-col rounded-2xl border border-line bg-container shadow-2xl", style: { left: drag.pos.x, top: drag.pos.y, width: WINDOW.w, height: WINDOW.h } };
   return (
-    <div role="dialog" aria-label="Recipe chat" className={frame.className} style={frame.style}>
-      <ChatPanel recipe={recipe} factor={factor} units={units} onMinimize={() => setOpen(false)} titleBar={narrow ? {} : { ...drag.handlers, className: "cursor-move touch-none" }} />
-    </div>
+    <>
+      {bubbleButton}
+      {opened && (
+        <div role="dialog" aria-label="Recipe chat" hidden={!open} className={open ? frame.className : "hidden"} style={open ? frame.style : undefined}>
+          <ChatPanel recipe={recipe} factor={factor} units={units} onMinimize={() => setOpen(false)} titleBar={narrow ? {} : { ...drag.handlers, className: "cursor-move touch-none" }} />
+        </div>
+      )}
+    </>
   );
 }
 

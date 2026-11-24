@@ -14,10 +14,19 @@ export interface Size {
 
 const THRESHOLD = 5;
 
-export function clampPos(p: Pos, size: Size, viewport: Size): Pos {
+// keepOut: room at the top and bottom it stays out of (Cook mode's top bar and step buttons)
+export interface KeepOut {
+  top: number;
+  bottom: number;
+}
+const NONE: KeepOut = { top: 0, bottom: 0 };
+
+export function clampPos(p: Pos, size: Size, viewport: Size, keepOut: KeepOut = NONE): Pos {
+  const top = keepOut.top;
+  const bottom = Math.max(top, viewport.h - size.h - keepOut.bottom);
   return {
     x: Math.max(0, Math.min(p.x, viewport.w - size.w)),
-    y: Math.max(0, Math.min(p.y, viewport.h - size.h)),
+    y: Math.max(0, Math.min(Math.max(p.y, top), bottom)),
   };
 }
 
@@ -39,11 +48,11 @@ function keep(key: string, p: Pos) {
   }
 }
 
-export function useDraggable(key: string, size: Size, start: () => Pos) {
+export function useDraggable(key: string, size: Size, start: () => Pos, keepOut: KeepOut = NONE) {
   const [raw, setRaw] = useState<Pos>(() => load(key) ?? start());
   const [view, setView] = useState<Size>(viewport);
   const dragged = useRef(false);
-  const pos = clampPos(raw, size, view);
+  const pos = clampPos(raw, size, view, keepOut);
   const posRef = useRef(pos);
   posRef.current = pos;
 
@@ -69,7 +78,7 @@ export function useDraggable(key: string, size: Size, start: () => Pos) {
         const dy = ev.clientY - from.y;
         if (!dragged.current && Math.abs(dx) <= THRESHOLD && Math.abs(dy) <= THRESHOLD) return;
         dragged.current = true;
-        last = clampPos({ x: origin.x + dx, y: origin.y + dy }, size, viewport());
+        last = clampPos({ x: origin.x + dx, y: origin.y + dy }, size, viewport(), keepOut);
         setRaw(last);
       };
       const up = () => {
@@ -82,7 +91,7 @@ export function useDraggable(key: string, size: Size, start: () => Pos) {
       window.addEventListener("pointerup", up);
       window.addEventListener("pointercancel", up);
     },
-    [key, size]
+    [key, size, keepOut]
   );
 
   // A click right after a drag is the end of the drag, not a tap

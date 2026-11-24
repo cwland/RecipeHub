@@ -6,6 +6,11 @@ import { chatErrorText } from "./chatApi";
 import { ApiError } from "../api";
 
 describe("clampPos", () => {
+  it("can keep clear of a top bar and a footer (Cook mode)", () => {
+    const keepOut = { top: 64, bottom: 96 };
+    expect(clampPos({ x: 10, y: 380 }, { w: 44, h: 44 }, { w: 400, h: 390 }, keepOut)).toEqual({ x: 10, y: 250 });
+    expect(clampPos({ x: 10, y: 0 }, { w: 44, h: 44 }, { w: 400, h: 390 }, keepOut)).toEqual({ x: 10, y: 64 });
+  });
   it("keeps the bubble inside the screen", () => {
     expect(clampPos({ x: -50, y: 900 }, { w: 56, h: 56 }, { w: 400, h: 800 })).toEqual({ x: 0, y: 744 });
     expect(clampPos({ x: 100, y: 100 }, { w: 56, h: 56 }, { w: 400, h: 800 })).toEqual({ x: 100, y: 100 });

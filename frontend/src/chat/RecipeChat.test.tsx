@@ -104,4 +104,29 @@ describe("Recipe chat", () => {
     expect(screen.queryByRole("dialog", { name: "Recipe chat" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open recipe chat" })).toBeInTheDocument();
   });
+
+  it("closing the chat while it's answering doesn't lose the wait or allow a second question", async () => {
+    let answer!: (v: unknown) => void;
+    const { server, u, win } = await openChat({ "POST /api/recipes/7/chat": () => new Promise((r) => (answer = r)) });
+    await u.click(await within(win).findByRole("button", { name: "Reduce calories" }));
+    await u.click(within(win).getByRole("button", { name: "Minimize" }));
+    await u.click(screen.getByRole("button", { name: "Open recipe chat" }));
+    const again = await screen.findByRole("dialog", { name: "Recipe chat" });
+    expect(within(again).getByRole("status", { name: "The assistant is typing" })).toBeInTheDocument();
+    expect(within(again).queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    answer({ userMessage: msg(1, "user", "Reduce calories"), reply: msg(2, "assistant", "Use lean beef.") });
+    expect(await within(again).findByText("Use lean beef.")).toBeInTheDocument();
+    expect(server.writes().filter((w) => w.method === "POST")).toHaveLength(1);
+  });
+
+  it("on a short screen (a phone on its side) it opens as a panel, not a window taller than the screen", async () => {
+    const h = window.innerHeight;
+    Object.defineProperty(window, "innerHeight", { value: 390, configurable: true });
+    try {
+      const { win } = await openChat({});
+      expect(win.style.height).toBe("85vh");
+    } finally {
+      Object.defineProperty(window, "innerHeight", { value: h, configurable: true });
+    }
+  });
 });
