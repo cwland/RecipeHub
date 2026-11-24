@@ -14,6 +14,12 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.1.1",
+    date: "2026-11-24",
+    title: "Recipe chat fix",
+    fixed: ["**Recipe chat opens again.** Tapping the chat bubble showed a blank page in current versions of Chrome."],
+  },
+  {
     version: "1.1.0",
     date: "2026-11-24",
     title: "Recipe chat",

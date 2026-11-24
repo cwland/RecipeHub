@@ -129,4 +129,19 @@ describe("Recipe chat", () => {
       Object.defineProperty(window, "innerHeight", { value: h, configurable: true });
     }
   });
+
+  it("keeps working when the browser's scrollIntoView returns a promise (current Chrome)", async () => {
+    const proto = Element.prototype as unknown as { scrollIntoView?: unknown };
+    const before = proto.scrollIntoView;
+    proto.scrollIntoView = () => Promise.resolve();
+    try {
+      const { u, win } = await openChat({ "POST /api/recipes/7/chat": () => ({ userMessage: msg(1, "user", "Reduce calories"), reply: msg(2, "assistant", "Use lean beef.") }) });
+      await u.click(await within(win).findByRole("button", { name: "Reduce calories" }));
+      expect(await within(win).findByText("Use lean beef.")).toBeInTheDocument();
+      await u.click(within(win).getByRole("button", { name: "Minimize" }));
+      expect(screen.getByRole("button", { name: "Open recipe chat" })).toBeInTheDocument();
+    } finally {
+      proto.scrollIntoView = before;
+    }
+  });
 });

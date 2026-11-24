@@ -104,7 +104,10 @@ function ChatPanel({ recipe, factor, units, onMinimize, titleBar }: { recipe: Re
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipe.id]);
-  useEffect(() => end.current?.scrollIntoView?.({ block: "end" }), [messages, waiting, problem]);
+  // (a block body: Chrome's scrollIntoView can return a promise, and an effect may only return a cleanup)
+  useEffect(() => {
+    end.current?.scrollIntoView?.({ block: "end" });
+  }, [messages, waiting, problem]);
 
   const ask = async (body: { message: string } | { retryOf: number }) => {
     if (waiting) return;
