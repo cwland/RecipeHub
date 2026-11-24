@@ -4,7 +4,7 @@ import { HttpError } from "../lib/errors.js";
 import { logEvent } from "../lib/appLog.js";
 import { getFeatures, setFeatures } from "../lib/features.js";
 
-const NAMES = { ai: "AI", apiKeys: "API keys", aiEnhance: "AI Enhance", autoNutrition: "Auto nutrition", recipeVersions: "Recipe versioning", savedCopies: "Saved copies", publicLinks: "Public share links", discoveryRefresh: "Discovery refresh" } as const;
+const NAMES = { ai: "AI", apiKeys: "API keys", aiEnhance: "AI Enhance", autoNutrition: "Auto nutrition", recipeVersions: "Recipe versioning", savedCopies: "Saved copies", publicLinks: "Public share links", discoveryRefresh: "Discovery refresh", recipeChat: "Recipe chat" } as const;
 
 export default async function featureRoutes(app: FastifyInstance) {
   const requireLogin = (req: { auth?: { method: string } }) => {
@@ -19,7 +19,7 @@ export default async function featureRoutes(app: FastifyInstance) {
 
   app.put("/api/settings/features", async (req) => {
     requireLogin(req);
-    const changes = z.object({ ai: z.boolean(), apiKeys: z.boolean(), aiEnhance: z.boolean(), autoNutrition: z.boolean(), recipeVersions: z.boolean(), savedCopies: z.boolean(), publicLinks: z.boolean(), discoveryRefresh: z.boolean() }).partial().strict().parse(req.body);
+    const changes = z.object({ ai: z.boolean(), apiKeys: z.boolean(), aiEnhance: z.boolean(), autoNutrition: z.boolean(), recipeVersions: z.boolean(), savedCopies: z.boolean(), publicLinks: z.boolean(), discoveryRefresh: z.boolean(), recipeChat: z.boolean() }).partial().strict().parse(req.body);
     const before = await getFeatures(app.db);
     const after = await setFeatures(app.db, changes);
     for (const k of Object.keys(changes) as (keyof typeof NAMES)[]) {

@@ -36,9 +36,9 @@ const upload = (files: Buffer[]) => {
 
 describe("which AI does which job", () => {
   it("says whether AI and photo reading are there", async () => {
-    expect((await t.api("GET", "/api/ai/status")).body).toEqual({ ready: false, photos: false, enhance: false });
+    expect((await t.api("GET", "/api/ai/status")).body).toEqual({ ready: false, photos: false, enhance: false, recipeChat: false });
     await twoServices();
-    expect((await t.api("GET", "/api/ai/status")).body).toEqual({ ready: true, photos: true, enhance: true });
+    expect((await t.api("GET", "/api/ai/status")).body).toEqual({ ready: true, photos: true, enhance: true, recipeChat: true });
     await t.api("PUT", "/api/settings/features", { aiEnhance: false });
     expect((await t.api("GET", "/api/ai/status")).body.enhance).toBe(false);
     const s = (await t.api("GET", "/api/settings/ai")).body.settings.services;

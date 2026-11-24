@@ -11,8 +11,9 @@ import { apiKeys, appSettings } from "../db/schema.js";
 //  - recipeVersions: no versions are made and edits save without asking (on from the start)
 //  - publicLinks: every recipe's /share/ link answers "not found" (on from the start)
 //  - savedCopies: a blocked link import doesn't look for a saved copy in web archives (on from the start)
+//  - recipeChat: the chat assistant on recipes (only matters while AI is on)
 //  - discoveryRefresh: Discover's feeds aren't checked by themselves (Refresh still works; on from the start)
-export const FEATURES = ["ai", "apiKeys", "aiEnhance", "autoNutrition", "recipeVersions", "savedCopies", "publicLinks", "discoveryRefresh"] as const;
+export const FEATURES = ["ai", "apiKeys", "aiEnhance", "autoNutrition", "recipeVersions", "savedCopies", "publicLinks", "discoveryRefresh", "recipeChat"] as const;
 export type Feature = (typeof FEATURES)[number];
 export type Features = Record<Feature, boolean>;
 
@@ -21,7 +22,7 @@ async function defaults(db: Db): Promise<Features> {
   const rows = await db.select({ key: appSettings.key }).from(appSettings);
   const has = new Set(rows.map((r) => r.key));
   const [{ n }] = await db.select({ n: count() }).from(apiKeys);
-  return { ai: has.has("ai"), apiKeys: n > 0, aiEnhance: has.has("ai"), autoNutrition: has.has("ai"), recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true };
+  return { ai: has.has("ai"), apiKeys: n > 0, aiEnhance: has.has("ai"), autoNutrition: has.has("ai"), recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true, recipeChat: has.has("ai") };
 }
 
 async function saved(db: Db): Promise<Partial<Features>> {

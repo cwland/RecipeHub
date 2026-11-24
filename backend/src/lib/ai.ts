@@ -527,7 +527,7 @@ export class AiService {
   // For the app: is AI there, and can it read photos? (no settings or keys)
   async status() {
     const ready = !!(await this.active());
-    return { ready, photos: !!(await this.active("photo")), enhance: ready && (await isOn(this.db, "aiEnhance")) };
+    return { ready, photos: !!(await this.active("photo")), enhance: ready && (await isOn(this.db, "aiEnhance")), recipeChat: ready && (await isOn(this.db, "recipeChat")) };
   }
 
   // Model names the provider offers (for the picker)

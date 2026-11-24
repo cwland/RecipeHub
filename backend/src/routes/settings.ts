@@ -1,4 +1,5 @@
 import { setFeatures } from "../lib/features.js";
+import { getRecipeChatSettings, saveRecipeChatSettings } from "../lib/recipeChatSettings.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
@@ -159,6 +160,20 @@ export default async function settingsRoutes(app: FastifyInstance) {
     }
     if (first && (await app.ai.stored())?.services.length) await setFeatures(app.db, { ai: true, aiEnhance: true, autoNutrition: true });
     return { settings: await app.ai.summary() };
+  });
+
+  // Recipe chat: household notes and which AI answers first (the services are listed to pick from)
+  const recipeChatView = async () => ({ ...(await getRecipeChatSettings(app.db)), services: ((await app.ai.stored())?.services ?? []).map((sv) => ({ id: sv.id, name: sv.name })) });
+  app.get("/api/settings/ai/recipe-chat", async (req) => {
+    requireLogin(req);
+    return recipeChatView();
+  });
+  app.put("/api/settings/ai/recipe-chat", async (req) => {
+    requireLogin(req);
+    const v = z.object({ notes: z.string().trim().max(1000, "Household notes can be 1000 characters at most").optional(), serviceId: z.string().nullable().optional() }).strict().parse(req.body ?? {});
+    if (v.serviceId && !((await app.ai.stored())?.services ?? []).some((sv) => sv.id === v.serviceId)) throw new HttpError(400, "That AI service isn't set up");
+    await saveRecipeChatSettings(app.db, v);
+    return recipeChatView();
   });
 
   app.delete("/api/settings/ai", async (req, reply) => {

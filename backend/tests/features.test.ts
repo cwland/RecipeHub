@@ -38,17 +38,17 @@ describe("feature switches", () => {
   });
 
   it("start off when nothing is set up, and on for what is", async () => {
-    expect(await features()).toEqual({ ai: false, apiKeys: false, aiEnhance: false, autoNutrition: false, recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true });
+    expect(await features()).toEqual({ ai: false, apiKeys: false, aiEnhance: false, autoNutrition: false, recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true, recipeChat: false });
     await t.api("PUT", "/api/settings/ai", { services: [{ provider: "openai", model: "tiny", apiKey: "k" }], maxPerRun: 50 });
     await t.api("POST", "/api/keys", { name: "n8n" });
-    expect(await features()).toEqual({ ai: true, apiKeys: true, aiEnhance: true, autoNutrition: true, recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true });
+    expect(await features()).toEqual({ ai: true, apiKeys: true, aiEnhance: true, autoNutrition: true, recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true, recipeChat: true });
   });
 
   it("only flipped switches are stored; the rest follow what's set up", async () => {
     await turn({ apiKeys: true });
     await t.api("PUT", "/api/settings/ai", { services: [{ provider: "openai", model: "tiny", apiKey: "k" }], maxPerRun: 50 });
-    expect(await features()).toEqual({ ai: true, apiKeys: true, aiEnhance: true, autoNutrition: true, recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true });
-    expect((await turn({ ai: false })).body).toEqual({ ai: false, apiKeys: true, aiEnhance: true, autoNutrition: true, recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true });
+    expect(await features()).toEqual({ ai: true, apiKeys: true, aiEnhance: true, autoNutrition: true, recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true, recipeChat: true });
+    expect((await turn({ ai: false })).body).toEqual({ ai: false, apiKeys: true, aiEnhance: true, autoNutrition: true, recipeVersions: true, savedCopies: true, publicLinks: true, discoveryRefresh: true, recipeChat: true });
     expect((await t.api("PUT", "/api/settings/features", { nope: true })).status).toBe(400);
   });
 
